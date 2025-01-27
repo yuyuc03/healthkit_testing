@@ -1,11 +1,11 @@
 import 'package:health/health.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/health_metric.dart';
-import '../database/database_helper.dart';
+import '../services/database_service.dart';
 
 class HealthService {
   final Health health = Health();
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseService _databaseService = DatabaseService();
 
   final List<HealthDataType> types = [
     HealthDataType.ACTIVE_ENERGY_BURNED,
@@ -31,6 +31,8 @@ class HealthService {
     List<HealthMetric> healthMetrics = [];
 
     try {
+      await _databaseService.chechkDatabaseStatus();
+
       List<HealthDataPoint> healthPoint = await health.getHealthDataFromTypes(
           types: types, startTime: startTime, endTime: now);
 
@@ -42,12 +44,12 @@ class HealthService {
             unit: point.unit.toString(),
             timestamp: point.dateFrom,
           );
-
           healthMetrics.add(metric);
-
-          // Store data in database
-          await _databaseHelper.insertHealthMetric(metric);
         }
+      }
+
+      if (healthMetrics.isNotEmpty) {
+        await _databaseService.insertHealthMetrics(healthMetrics);
       }
       return healthMetrics;
     } catch (e) {
@@ -56,25 +58,44 @@ class HealthService {
     }
   }
 
+  // Get data for a specific type within a date range
+  Future<List<HealthMetric>> getHealthDataByDateRange(
+    HealthDataType type,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      return await _databaseService.getMetricsByDateRange(
+        type,
+        startDate,
+        endDate,
+      );
+    } catch (e) {
+      print("Error getting health data by date range: $e");
+      return [];
+    }
+  }
+
+  Future<HealthMetric?> getLatestHealthData(HealthDataType type) async {
+    try {
+      return await _databaseService.getLatestMetric(type);
+    } catch (e) {
+      print("Error getting latest health data: $e");
+      return null;
+    }
+  }
+
   // Retrieve stored data (maybe used for ML later)
   Future<List<HealthMetric>> getStoredHealthData(HealthDataType type) async {
-    final Database db = await _databaseHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'health_metrics',
-      where: 'type = ?',
-      whereArgs: [type.name],
-      orderBy: 'timestamp DESC',
-    );
+    try {
+      return await _databaseService.getHealthMetricsForML(type.name);
+    } catch (e) {
+      print("Error getting stored health data: $e");
+      return [];
+    }
+  }
 
-    return List.generate(maps.length, (i) {
-      return HealthMetric(
-        type: HealthDataType.values.firstWhere(
-          (e) => e.name == maps[i]['type'],
-        ),
-        value: maps[i]['value'],
-        unit: maps[i]['unit'],
-        timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamp']),
-      );
-    });
+  Future<void> dispose() async {
+    await _databaseService.close();
   }
 }
