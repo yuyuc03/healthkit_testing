@@ -31,7 +31,7 @@ class HealthService {
     List<HealthMetric> healthMetrics = [];
 
     try {
-      await _databaseService.chechkDatabaseStatus();
+      await _databaseService.checkDatabaseStatus();
 
       List<HealthDataPoint> healthPoint = await health.getHealthDataFromTypes(
           types: types, startTime: startTime, endTime: now);

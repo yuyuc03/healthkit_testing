@@ -8,7 +8,7 @@ void main() async {
   final dbService = DatabaseService();
   try {
     await dbService.database;
-    await dbService.chechkDatabaseStatus();
+    await dbService.checkDatabaseStatus();
     print('Database initialized successfully');
   } catch (e) {
     print('Error initialzing database: $e');

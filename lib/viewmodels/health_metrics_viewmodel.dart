@@ -55,7 +55,7 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
   Future<void> _loadInitialData() async {
     try {
-      await _databaseService.chechkDatabaseStatus();
+      await _databaseService.checkDatabaseStatus();
 
       for (var metric in _metrics) {
         final storedData = await _databaseService.getLatestMetric(metric.type);

@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/health_metric.dart';
 import 'dart:async';
-
+import 'dart:io';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -23,12 +23,16 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    final String path = join(await getDatabasesPath(), 'health_metrics.db');
-    print('Database path: $path'); //Debug
+    // Get the project's root directory
+    final String currentDirectory = Directory.current.path;
+
+    // Define the database path in the current directory
+    final String dbPath = join(currentDirectory, 'health_metrics.db');
+    print('Database will be created at: $dbPath'); //Debug
 
     try {
       final db = await openDatabase(
-        path,
+        dbPath,
         version: 1,
         onCreate: (Database db, int version) async {
           print('Creating database tables......'); //Debug
@@ -41,11 +45,11 @@ class DatabaseService {
           timestamp INTEGER NOT NULL
           source TEXT NOT NULL
         )''');
-          print('Databse opened successfully');
+          print('Databse opened successfully at $dbPath');
           _isDatabaseInitialized = true;
         },
         onOpen: (Database db) {
-          print('Database opened successfully');
+          print('Database opened successfully at $dbPath');
           _isDatabaseInitialized = true;
         },
       );
@@ -56,7 +60,7 @@ class DatabaseService {
     }
   }
 
-  Future<void> chechkDatabaseStatus() async {
+  Future<void> checkDatabaseStatus() async {
     try {
       final db = await database;
       final tables = await db
