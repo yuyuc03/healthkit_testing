@@ -4,6 +4,7 @@ import 'package:path/path.dart';
 import '../models/health_metric.dart';
 import 'dart:async';
 
+
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   static Database? _database;
@@ -40,7 +41,6 @@ class DatabaseService {
           timestamp INTEGER NOT NULL
           source TEXT NOT NULL
         )''');
-          _isDatabaseInitialized = true;
           print('Databse opened successfully');
           _isDatabaseInitialized = true;
         },
@@ -127,7 +127,7 @@ class DatabaseService {
     try {
       final Database db = await database;
       final List<Map<String, dynamic>> result = await db.query(
-        'healtg_metrics',
+        'health_metrics',
         where: 'type = ?',
         whereArgs: [type.name],
         orderBy: 'timestamp DESC',
@@ -164,7 +164,7 @@ class DatabaseService {
         whereArgs: [
           type.name,
           startDate.millisecondsSinceEpoch,
-          endDate.microsecondsSinceEpoch
+          endDate.millisecondsSinceEpoch
         ],
         orderBy: 'timestamp DESC',
       );
@@ -174,7 +174,7 @@ class DatabaseService {
           type: type,
           value: maps[i]['value'],
           unit: maps[i]['unit'],
-          timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamo']),
+          timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamp']),
         );
       });
     } catch (e) {
@@ -217,7 +217,7 @@ class DatabaseService {
   }
 
   // Delete records
-  Future<int> deleteOldReocrds(DateTime beforeDate) async {
+  Future<int> deleteOldRecords(DateTime beforeDate) async {
     try {
       final Database db = await database;
       return await db.delete(
