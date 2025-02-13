@@ -45,18 +45,26 @@ class HealthMetric {
 
   String get displayName {
     switch (type) {
-      case HealthDataType.ACTIVE_ENERGY_BURNED:
-        return "Activity Energy Burned";
-      case HealthDataType.EXERCISE_TIME:
-        return "Exercise Time";
-      case HealthDataType.HEART_RATE:
-        return "Heart Rate";
-      case HealthDataType.BLOOD_OXYGEN:
-        return "Blood Oxygen";
       case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
         return "Blood Pressure (Systolic)";
       case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
         return "Blood Pressure (Diastolic)";
+      case HealthDataType.BLOOD_GLUCOSE:
+        return "Blood Glucose";
+      case HealthDataType.DIETARY_CHOLESTEROL:
+        return "Dietary Cholesterol";
+      case HealthDataType.BLOOD_OXYGEN:
+        return "Blood Oxygen";
+      case HealthDataType.RESPIRATORY_RATE:
+        return "Respiratory Rate";
+      case HealthDataType.HEART_RATE:
+        return "Heart Rate";
+      case HealthDataType.ACTIVE_ENERGY_BURNED:
+        return "Activity Energy Burned";
+      case HealthDataType.EXERCISE_TIME:
+        return "Exercise Time";
+      case HealthDataType.STEPS:
+        return "Steps";
       default:
         return type.toString();
     }
@@ -64,17 +72,25 @@ class HealthMetric {
 
   String get unitDisplay {
     switch (type) {
+      case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
+      case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
+        return 'mmHg';
+      case HealthDataType.BLOOD_GLUCOSE:
+        return "mmol/L";
+      case HealthDataType.DIETARY_CHOLESTEROL:
+        return "mg";
+      case HealthDataType.BLOOD_OXYGEN:
+        return '%';
+      case HealthDataType.RESPIRATORY_RATE:
+        return "breaths/min";
+      case HealthDataType.HEART_RATE:
+        return 'BPM';
       case HealthDataType.ACTIVE_ENERGY_BURNED:
         return 'kcal';
       case HealthDataType.EXERCISE_TIME:
         return 'min';
-      case HealthDataType.HEART_RATE:
-        return 'BPM';
-      case HealthDataType.BLOOD_OXYGEN:
-        return '%';
-      case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
-      case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
-        return 'mmHg';
+      case HealthDataType.STEPS:
+        return "steps";
       default:
         return unit;
     }

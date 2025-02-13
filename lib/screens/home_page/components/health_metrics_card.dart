@@ -61,17 +61,25 @@ class HealthMetricsCard extends StatelessWidget {
 
   IconData _getIconForMetric(HealthDataType type) {
     switch (type) {
+      case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
+      case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
+        return Icons.speed;
+      case HealthDataType.BLOOD_GLUCOSE:
+        return Icons.bloodtype;
+      case HealthDataType.DIETARY_CHOLESTEROL:
+        return Icons.restaurant;
+      case HealthDataType.BLOOD_OXYGEN:
+        return Icons.air;
+      case HealthDataType.RESPIRATORY_RATE:
+        return Icons.air;
       case HealthDataType.ACTIVE_ENERGY_BURNED:
         return Icons.local_fire_department;
       case HealthDataType.EXERCISE_TIME:
         return Icons.timer;
       case HealthDataType.HEART_RATE:
         return Icons.favorite;
-      case HealthDataType.BLOOD_OXYGEN:
-        return Icons.air;
-      case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
-      case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
-        return Icons.speed;
+      case HealthDataType.STEPS:
+        return Icons.directions_walk;
       default:
         return Icons.health_and_safety;
     }

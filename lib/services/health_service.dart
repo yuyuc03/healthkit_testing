@@ -8,12 +8,16 @@ class HealthService {
   final DatabaseService _databaseService = DatabaseService();
 
   final List<HealthDataType> types = [
-    HealthDataType.ACTIVE_ENERGY_BURNED,
-    HealthDataType.EXERCISE_TIME,
-    HealthDataType.HEART_RATE,
-    HealthDataType.BLOOD_OXYGEN,
     HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
     HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+    HealthDataType.BLOOD_GLUCOSE,
+    HealthDataType.DIETARY_CHOLESTEROL,
+    HealthDataType.BLOOD_OXYGEN,
+    HealthDataType.RESPIRATORY_RATE,
+    HealthDataType.HEART_RATE,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.EXERCISE_TIME,
+    HealthDataType.STEPS,  
   ];
 
   Future<bool> requestAuthorization() async {

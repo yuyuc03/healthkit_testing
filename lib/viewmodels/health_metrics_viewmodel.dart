@@ -21,6 +21,41 @@ class HealthMetricsViewModel extends ChangeNotifier {
   void _initializeDefaultMetrics() {
     _metrics = [
       HealthMetric(
+        type: HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+        unit: 'mmHg',
+        value: 0,
+      ),
+      HealthMetric(
+        type: HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+        unit: 'mmHg',
+        value: 0,
+      ),
+      HealthMetric(
+        type: HealthDataType.BLOOD_GLUCOSE, 
+        unit: 'mmol/L',
+        value: 0,
+      ),
+      HealthMetric(
+        type: HealthDataType.DIETARY_CHOLESTEROL, 
+        unit: 'mg',
+        value: 0,
+      ),
+      HealthMetric(
+        type: HealthDataType.BLOOD_OXYGEN, 
+        unit: '%',
+        value: 0,
+      ),
+      HealthMetric(
+        type: HealthDataType.RESPIRATORY_RATE, 
+        unit: 'breaths/min',
+        value: 0,
+      ),
+      HealthMetric(
+        type: HealthDataType.HEART_RATE,
+        unit: 'BPM',
+        value: 0,
+      ),
+      HealthMetric(
         type: HealthDataType.ACTIVE_ENERGY_BURNED,
         unit: 'kcal',
         value: 0,
@@ -31,25 +66,11 @@ class HealthMetricsViewModel extends ChangeNotifier {
         value: 0,
       ),
       HealthMetric(
-        type: HealthDataType.HEART_RATE,
-        unit: 'BPM',
+        type: HealthDataType.STEPS,
+        unit: 'steps',
         value: 0,
       ),
-      HealthMetric(
-        type: HealthDataType.BLOOD_OXYGEN,
-        unit: '%',
-        value: 0,
-      ),
-      HealthMetric(
-        type: HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-        unit: 'mmHg',
-        value: 0,
-      ),
-      HealthMetric(
-        type: HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-        unit: 'mmHg',
-        value: 0,
-      ),
+      
     ];
   }
 

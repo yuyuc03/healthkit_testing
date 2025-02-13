@@ -3,7 +3,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/health_metric.dart';
 import 'dart:async';
-import 'dart:io';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -23,33 +22,29 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    // Get the project's root directory
-    final String currentDirectory = Directory.current.path;
-
-    // Define the database path in the current directory
-    final String dbPath = join(currentDirectory, 'health_metrics.db');
-    print('Database will be created at: $dbPath'); //Debug
+    final String path = join(await getDatabasesPath(), 'health_metrics.db');
+    print('Database path: $path'); //Debug
 
     try {
       final db = await openDatabase(
-        dbPath,
+        path,
         version: 1,
         onCreate: (Database db, int version) async {
           print('Creating database tables......'); //Debug
           await db.execute('''
           CREATE TABLE health_metrics(
           id INTEGER PRIMARY KEY AUTOINCREMENT
-          type TEXT NOT NULL
-          value DOUBLE NOT NULL
-          unit TEXT NOT NULL
           timestamp INTEGER NOT NULL
+          systolic_pressure REAL,
+          diastolic_pressure REAL,
+          unit TEXT NOT NULL         
           source TEXT NOT NULL
         )''');
-          print('Databse opened successfully at $dbPath');
           _isDatabaseInitialized = true;
+          print('Databse opened successfully');
         },
         onOpen: (Database db) {
-          print('Database opened successfully at $dbPath');
+          print('Database opened successfully');
           _isDatabaseInitialized = true;
         },
       );
@@ -122,7 +117,8 @@ class DatabaseService {
         'timestamp': metric.timestamp.millisecondsSinceEpoch,
         'source': 'HealthKit'
       },
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: ConflictAlgorithm
+          .replace, // Use to in case the same data is inserted twoce
     );
   }
 
@@ -168,7 +164,7 @@ class DatabaseService {
         whereArgs: [
           type.name,
           startDate.millisecondsSinceEpoch,
-          endDate.millisecondsSinceEpoch
+          endDate.microsecondsSinceEpoch
         ],
         orderBy: 'timestamp DESC',
       );
@@ -178,7 +174,7 @@ class DatabaseService {
           type: type,
           value: maps[i]['value'],
           unit: maps[i]['unit'],
-          timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamp']),
+          timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamo']),
         );
       });
     } catch (e) {
@@ -221,7 +217,7 @@ class DatabaseService {
   }
 
   // Delete records
-  Future<int> deleteOldRecords(DateTime beforeDate) async {
+  Future<int> deleteOldReocrds(DateTime beforeDate) async {
     try {
       final Database db = await database;
       return await db.delete(
