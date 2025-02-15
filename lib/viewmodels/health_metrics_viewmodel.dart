@@ -10,8 +10,24 @@ class HealthMetricsViewModel extends ChangeNotifier {
   List<HealthMetric> _metrics = [];
   bool _isLoading = false;
 
+  double calorieGoal = 350; 
+  double exerciseGoal = 30; 
+  double stepGoal = 10000;
+
   List<HealthMetric> get metrics => _metrics;
   bool get isLoading => _isLoading;
+
+  double get caloriesBurned {
+    return _getMetricValue(HealthDataType.ACTIVE_ENERGY_BURNED);
+  }
+
+  double get exerciseMinutes {
+    return _getMetricValue(HealthDataType.EXERCISE_TIME);
+  }
+
+  double get steps {
+    return _getMetricValue(HealthDataType.STEPS); 
+  }
 
   HealthMetricsViewModel() {
     _initializeDefaultMetrics();
@@ -125,7 +141,6 @@ class HealthMetricsViewModel extends ChangeNotifier {
     await initializeHealth();
   }
 
-  // Method to get historical data for ML processing
   Future<List<HealthMetric>> getHistoricalData(HealthDataType type) async {
     try {
       return await _databaseService.getHealthMetricsForML(type.name);
@@ -135,7 +150,15 @@ class HealthMetricsViewModel extends ChangeNotifier {
     }
   }
 
-  // Clean up resources when the viewmodel is disposed
+  double _getMetricValue(HealthDataType type) {
+  final metric = _metrics.firstWhere(
+    (m) => m.type == type,
+    orElse: () => HealthMetric(type: type, unit: '', value: 0),
+  );
+  return metric.value ?? 0.0; 
+}
+
+
   @override
   void dispose() {
     _databaseService.close();
