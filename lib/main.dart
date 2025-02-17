@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import './screens/home_page/home_screen.dart';
+import 'package:healthkit_integration_testing/screens/login_screen.dart';
+import 'screens/home_screen.dart';
 import 'services/database_service.dart';
 
 void main() async {
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: HomeScreen(),
+      home: const LoginScreen(),
     );
   }
 }

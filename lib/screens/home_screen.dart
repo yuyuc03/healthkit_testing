@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/health_metrics_viewmodel.dart';
-import '../../widgets/health_metrics_card.dart';
-import '../../widgets/activity_ring.dart';
+import '../viewmodels/health_metrics_viewmodel.dart';
+import '../widgets/health_metrics_card.dart';
+import '../widgets/activity_ring.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
