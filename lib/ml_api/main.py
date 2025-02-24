@@ -5,19 +5,9 @@ from .database import init_db
 import pickle
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from .config import MODEL_PATH
 
 app = FastAPI()
-
-# Load model at startup
-@app.on_event("startup")
-async def load_model():
-    global model
-    try:
-        with open('ml_api/models/cardio_model.pkl', 'rb') as file:
-            model = pickle.load(file)
-        print(f"Model loaded successfully. Type: {type(model)}")
-    except Exception as e:
-        print(f"Error loading model: {e}")
 
 app.add_middleware(
     CORSMiddleware,

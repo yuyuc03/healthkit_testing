@@ -56,11 +56,11 @@ class HomeScreen extends StatelessWidget {
                               onTap: () {
                                 print("Profile button tapped");
                               },
-                              child: CircleAvatar(
+                              /*child: CircleAvatar(
                                 radius: 27,
                                 backgroundImage: AssetImage(
                                     'assets/profile_pic.jpg'),
-                              ),
+                              ),*/
                             ),
                           ),
                         ),

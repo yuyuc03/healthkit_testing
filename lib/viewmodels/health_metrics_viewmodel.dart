@@ -10,8 +10,8 @@ class HealthMetricsViewModel extends ChangeNotifier {
   List<HealthMetric> _metrics = [];
   bool _isLoading = false;
 
-  double calorieGoal = 350; 
-  double exerciseGoal = 30; 
+  double calorieGoal = 350;
+  double exerciseGoal = 30;
   double stepGoal = 10000;
 
   List<HealthMetric> get metrics => _metrics;
@@ -26,7 +26,7 @@ class HealthMetricsViewModel extends ChangeNotifier {
   }
 
   double get steps {
-    return _getMetricValue(HealthDataType.STEPS); 
+    return _getMetricValue(HealthDataType.STEPS);
   }
 
   HealthMetricsViewModel() {
@@ -47,22 +47,22 @@ class HealthMetricsViewModel extends ChangeNotifier {
         value: 0,
       ),
       HealthMetric(
-        type: HealthDataType.BLOOD_GLUCOSE, 
+        type: HealthDataType.BLOOD_GLUCOSE,
         unit: 'mmol/L',
         value: 0,
       ),
       HealthMetric(
-        type: HealthDataType.DIETARY_CHOLESTEROL, 
+        type: HealthDataType.DIETARY_CHOLESTEROL,
         unit: 'mg',
         value: 0,
       ),
       HealthMetric(
-        type: HealthDataType.BLOOD_OXYGEN, 
+        type: HealthDataType.BLOOD_OXYGEN,
         unit: '%',
         value: 0,
       ),
       HealthMetric(
-        type: HealthDataType.RESPIRATORY_RATE, 
+        type: HealthDataType.RESPIRATORY_RATE,
         unit: 'breaths/min',
         value: 0,
       ),
@@ -86,14 +86,11 @@ class HealthMetricsViewModel extends ChangeNotifier {
         unit: 'steps',
         value: 0,
       ),
-      
     ];
   }
 
   Future<void> _loadInitialData() async {
     try {
-      await _databaseService.checkDatabaseStatus();
-
       for (var metric in _metrics) {
         final storedData = await _databaseService.getLatestMetric(metric.type);
         if (storedData != null) {
@@ -120,7 +117,6 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
         await _databaseService.insertHealthMetrics(fetchedData);
 
-        // Update existing metrics with fetched values and store in database
         for (var fetchedMetric in fetchedData) {
           final index =
               _metrics.indexWhere((m) => m.type == fetchedMetric.type);
@@ -138,26 +134,44 @@ class HealthMetricsViewModel extends ChangeNotifier {
   }
 
   Future<void> refreshData() async {
-    await initializeHealth();
-  }
-
-  Future<List<HealthMetric>> getHistoricalData(HealthDataType type) async {
     try {
-      return await _databaseService.getHealthMetricsForML(type.name);
+      _isLoading = true;
+      notifyListeners();
+
+      _initializeDefaultMetrics();
+
+      final authorized = await _healthService.requestAuthorization();
+      if (authorized) {
+        final fetchedData = await _healthService.fetchHealthData();
+
+        if (fetchedData.isNotEmpty) {
+          await _databaseService.insertHealthMetrics(fetchedData);
+
+          // Update metrics with new data
+          for (var fetchedMetric in fetchedData) {
+            final index =
+                _metrics.indexWhere((m) => m.type == fetchedMetric.type);
+            if (index != -1) {
+              _metrics[index] = fetchedMetric;
+            }
+          }
+        }
+      }
     } catch (e) {
-      print('Error getting historical data: $e');
-      return [];
+      print('Error refreshing data: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
   double _getMetricValue(HealthDataType type) {
-  final metric = _metrics.firstWhere(
-    (m) => m.type == type,
-    orElse: () => HealthMetric(type: type, unit: '', value: 0),
-  );
-  return metric.value ?? 0.0; 
-}
-
+    final metric = _metrics.firstWhere(
+      (m) => m.type == type,
+      orElse: () => HealthMetric(type: type, unit: '', value: 0),
+    );
+    return metric.value ?? 0.0;
+  }
 
   @override
   void dispose() {

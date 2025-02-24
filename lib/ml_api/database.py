@@ -2,8 +2,12 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 from .health_data import HealthDataInput
+import os
 
-DATABASE_URL = '/Users/yuyu/Library/Developer/CoreSimulator/Devices/B5D0593B-15E9-4CBA-8109-7C7476E5F0BD/data/Containers/Data/Application/983E79F5-8F8B-4648-8CC0-FD956CE13479/Documents/health_metrics.db'
+
+DATABASE_URL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cardio_predictions.db")
+
+
 
 def init_db():
     with get_db_connection() as conn:
@@ -46,6 +50,6 @@ def save_prediction(data: HealthDataInput, prediction: int, probability: float):
             data.gluc,
             data.active,
             prediction,
-            probability
+            float(probability) if probability is not None else 0.0
         ))
         conn.commit()
