@@ -20,7 +20,6 @@ except Exception as e:
 @router.post("/predict", response_model=PredictionResponse)
 async def predict(data: HealthDataInput):
     try:
-        # Prepare features
         features = np.array([[
             data.age,
             data.gender,

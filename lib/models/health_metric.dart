@@ -17,7 +17,6 @@ class HealthMetric {
     this.source,
   }) : this.timestamp = timestamp ?? DateTime.now();
 
-  // Convert to Map for database operations
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -29,7 +28,6 @@ class HealthMetric {
     };
   }
 
-  // Create HealthMetric from Map (databse record)
   static HealthMetric fromMap(Map<String, dynamic> map) {
     return HealthMetric(
       id: map['id'],
@@ -96,7 +94,6 @@ class HealthMetric {
     }
   }
 
-  // For comparing health metrics
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -111,7 +108,6 @@ class HealthMetric {
   int get hashCode =>
       type.hashCode ^ value.hashCode ^ unit.hashCode ^ timestamp.hashCode;
 
-  // For debugging purposes
   @override
   String toString() {
     return 'HealthMetric{type: $type, value: $value, unit: $unit, timestamp: $timestamp, source: $source}';

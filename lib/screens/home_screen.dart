@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/health_metrics_viewmodel.dart';
-import '../widgets/health_metrics_card.dart';
-import '../widgets/activity_ring.dart';
+import '../../viewmodels/health_metrics_viewmodel.dart';
+import '../../widgets/health_metrics_card.dart';
+import '../../widgets/activity_ring.dart';
+
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -11,12 +12,11 @@ class HomeScreen extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => HealthMetricsViewModel()..initializeHealth(),
       child: Scaffold(
-        backgroundColor: Colors.white, 
+        backgroundColor: Colors.white,
         body: Consumer<HealthMetricsViewModel>(
           builder: (context, viewModel, child) {
             return Stack(
               children: [
-                // Gradient Circle Background
                 Positioned(
                   left: -size.width * 0.5,
                   top: -size.width * 0.5,
@@ -37,7 +37,6 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 RefreshIndicator(
                   onRefresh: () async {
                     await viewModel.refreshData();
@@ -46,8 +45,7 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 48), 
-                        
+                        const SizedBox(height: 48),
                         Align(
                           alignment: Alignment.topRight,
                           child: Padding(
@@ -56,16 +54,15 @@ class HomeScreen extends StatelessWidget {
                               onTap: () {
                                 print("Profile button tapped");
                               },
-                              /*child: CircleAvatar(
+                              child: CircleAvatar(
                                 radius: 27,
-                                backgroundImage: AssetImage(
-                                    'assets/profile_pic.jpg'),
-                              ),*/
+                                backgroundImage:
+                                    AssetImage('assets/images/profile_pic.jpg'),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
-
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
@@ -89,7 +86,6 @@ class HomeScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
-
                         Container(
                           width: double.infinity,
                           margin: const EdgeInsets.all(16),
@@ -108,7 +104,6 @@ class HomeScreen extends StatelessWidget {
                           height: 80,
                         ),
                         const SizedBox(height: 4),
-
                         Container(
                           width: double.infinity,
                           margin: const EdgeInsets.only(left: 20),
@@ -121,66 +116,57 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-
                         Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16.0, vertical: 16.0),
                           child: Container(
                             decoration: BoxDecoration(
-                              color:
-                                  Colors.white, 
-                              borderRadius:
-                                  BorderRadius.circular(16), 
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey
-                                      .withOpacity(0.3), 
+                                  color: Colors.grey.withOpacity(0.3),
                                   spreadRadius: 2,
                                   blurRadius: 5,
-                                  offset: Offset(0, 3), 
+                                  offset: Offset(0, 3),
                                 ),
                               ],
                             ),
-                            padding: const EdgeInsets.all(
-                                16), 
+                            padding: const EdgeInsets.all(16),
                             child: HealthRing(
                               caloriesValue: viewModel.caloriesBurned,
                               caloriesGoal: viewModel.calorieGoal,
                               exerciseValue: viewModel.exerciseMinutes,
                               exerciseGoal: viewModel.exerciseGoal,
-                              stepValue: viewModel.steps, 
+                              stepValue: viewModel.steps,
                               stepGoal: viewModel.stepGoal,
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
-
                         Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(left: 20),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Expanded(
-                                  child: Text(
-                                    'Health Overview',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1D1B4B),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(left: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Health Overview',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1D1B4B),
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                         ),
-
                         GridView.builder(
-                          shrinkWrap:
-                              true, 
-                          physics:
-                              const NeverScrollableScrollPhysics(), 
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
