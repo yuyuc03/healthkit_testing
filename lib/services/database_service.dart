@@ -11,8 +11,7 @@ class DatabaseService {
   Future<void> initialize() async {
     if (!_isInitialized) {
       try {
-        _db = await Db.create(
-            'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics');
+        _db = await Db.create('mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics');
         await _db!.open();
         _healthCollection = _db!.collection('health_metrics');
         _isInitialized = true;
