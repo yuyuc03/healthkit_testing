@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:healthkit_integration_testing/screens/login_screen.dart';
+import 'package:healthkit_integration_testing/screens/register_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:healthkit_integration_testing/screens/home_screen.dart';
 import 'package:healthkit_integration_testing/providers/healthkit_provider.dart';
 import 'services/database_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +30,14 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Health App',
         theme: ThemeData(
-          primarySwatch: Colors.blue,
+          primarySwatch: Colors.deepPurple,
           scaffoldBackgroundColor: Colors.grey[100],
         ),
-        home: HomeScreen(),
+        home: const LoginScreen(),
+        routes: {
+          '/login': (context) => LoginScreen(),
+          '/register': (context) => RegisterScreen(),
+        },
       ),
     );
   }
