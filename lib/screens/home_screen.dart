@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/health_metrics_viewmodel.dart';
 import '../../widgets/health_metrics_card.dart';
 import '../../widgets/activity_ring.dart';
-
+import './profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -52,7 +52,11 @@ class HomeScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(20),
                             child: GestureDetector(
                               onTap: () {
-                                print("Profile button tapped");
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => ProfileScreen()),
+                                );
                               },
                               child: CircleAvatar(
                                 radius: 27,

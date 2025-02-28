@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:healthkit_integration_testing/screens/home_screen.dart';
+import 'package:healthkit_integration_testing/providers/healthkit_provider.dart';
 import 'services/database_service.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized;
+  WidgetsFlutterBinding.ensureInitialized();
 
   final dbService = DatabaseService();
   try {
@@ -19,14 +21,18 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Health App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.grey[100],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => HealthKitProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Health App',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          scaffoldBackgroundColor: Colors.grey[100],
+        ),
+        home: HomeScreen(),
       ),
-      home: HomeScreen(),
     );
   }
 }
-//

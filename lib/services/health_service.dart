@@ -66,20 +66,19 @@ class HealthService {
       }
 
       if (healthMetrics.isNotEmpty) {
-      await _databaseService.insertHealthMetrics(healthMetrics);
-      print('Saved ${healthMetrics.length} health metrics to MongoDB');
-      
-      for (var metric in healthMetrics) {
-        print('Saved: ${metric.type.name} - Value: ${metric.value} ${metric.unit} at ${metric.timestamp}');
+        await _databaseService.insertHealthMetrics(healthMetrics);
+        print('Saved ${healthMetrics.length} health metrics to MongoDB');
+
+        for (var metric in healthMetrics) {
+          print(
+              'Saved: ${metric.type.name} - Value: ${metric.value} ${metric.unit} at ${metric.timestamp}');
+        }
       }
-    }
-    return healthMetrics;
+      return healthMetrics;
     } catch (e) {
       print("Fetch error: $e");
       return [];
     }
-
-    
   }
 
   Future<HealthMetric?> getLatestHealthData(HealthDataType type) async {
@@ -91,6 +90,67 @@ class HealthService {
     } catch (e) {
       print("Error getting latest health data: $e");
       return null;
+    }
+  }
+
+  Future<bool> isUserActive() async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+
+      final now = DateTime.now();
+      final startTime = now.subtract(const Duration(days: 7));
+
+      List<HealthDataPoint> stepsData = await health.getHealthDataFromTypes(
+        types: [HealthDataType.STEPS],
+        startTime: startTime,
+        endTime: now,
+      );
+
+      List<HealthDataPoint> exerciseData = await health.getHealthDataFromTypes(
+        types: [HealthDataType.EXERCISE_TIME],
+        startTime: startTime,
+        endTime: now,
+      );
+
+      List<HealthDataPoint> energyData = await health.getHealthDataFromTypes(
+        types: [HealthDataType.ACTIVE_ENERGY_BURNED],
+        startTime: startTime,
+        endTime: now,
+      );
+
+      double totalSteps = 0;
+      double totalExerciseMinutes = 0;
+      double totalCaloriesBurned = 0;
+
+      for (var point in stepsData) {
+        if (point.value is NumericHealthValue) {
+          totalSteps +=
+              (point.value as NumericHealthValue).numericValue.toDouble();
+        }
+      }
+
+      for (var point in exerciseData) {
+        if (point.value is NumericHealthValue) {
+          totalExerciseMinutes +=
+              (point.value as NumericHealthValue).numericValue.toDouble();
+        }
+      }
+
+      for (var point in energyData) {
+        if (point.value is NumericHealthValue) {
+          totalCaloriesBurned +=
+              (point.value as NumericHealthValue).numericValue.toDouble();
+        }
+      }
+
+      return totalExerciseMinutes >= 150 ||
+          totalSteps >= 70000 ||
+          totalCaloriesBurned >= 2000;
+    } catch (e) {
+      print("Error determining activity level: $e");
+      return false;
     }
   }
 
