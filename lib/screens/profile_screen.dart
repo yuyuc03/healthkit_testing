@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:healthkit_integration_testing/screens/home_screen.dart';
+import 'package:healthkit_integration_testing/screens/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/healthkit_provider.dart';
 import './profile_edit_screen.dart';
@@ -162,8 +164,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             TextButton(
                               onPressed: () {
-                                Navigator.pop(context);
-                                // Logic haven't add hereeeeee
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                                  (route) => false,
+                                );
                               },
                               child: Text(
                                 'Log Out',
