@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:healthkit_integration_testing/providers/user_profile_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/health_service.dart';
 import '../models/health_metric.dart';
 import 'package:health/health.dart';
@@ -7,8 +9,12 @@ import '../services/database_service.dart';
 class HealthMetricsViewModel extends ChangeNotifier {
   final HealthService _healthService = HealthService();
   final DatabaseService _databaseService = DatabaseService();
+  final UserProfileProvider _userProfileProvider;
+
   List<HealthMetric> _metrics = [];
   bool _isLoading = false;
+  String _userId = '';
+  bool _isInitialized = false;
 
   double calorieGoal = 350;
   double exerciseGoal = 30;
@@ -29,9 +35,45 @@ class HealthMetricsViewModel extends ChangeNotifier {
     return _getMetricValue(HealthDataType.STEPS);
   }
 
-  HealthMetricsViewModel() {
+  HealthMetricsViewModel(this._userProfileProvider) {
     _initializeDefaultMetrics();
-    _loadInitialData();
+  }
+
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _initializeUserId();
+      await _loadInitialData();
+      
+      if (_userId.isNotEmpty) {
+        await initializeHealth();
+      }
+      
+      _isInitialized = true;
+    } catch (e) {
+      print('Error during initialization: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _initializeUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _userId = prefs.getString('current_user_id') ?? '';
+      if (_userId.isEmpty) {
+        print('Warning: User ID not found');
+      } else {
+        print('User ID initialized successfully: $_userId');
+      }
+    } catch (e) {
+      print('Error initializing user ID: $e');
+    }
   }
 
   void _initializeDefaultMetrics() {
@@ -111,17 +153,30 @@ class HealthMetricsViewModel extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
+      if (_userId.isEmpty) {
+        await _initializeUserId();
+        
+        if (_userId.isEmpty) {
+          print('Cannot initialize health: No user ID found');
+          return;
+        }
+      }
+
       final authorized = await _healthService.requestAuthorization();
       if (authorized) {
-        final fetchedData = await _healthService.fetchHealthData();
+        final fetchedData = await _healthService.fetchHealthData(
+            _userId, _userProfileProvider.userProfile);
 
-        await _databaseService.insertHealthMetrics(fetchedData);
+        if (fetchedData.isNotEmpty) {
+          await _databaseService.insertHealthMetrics(
+              fetchedData, _userId, _userProfileProvider.userProfile);
 
-        for (var fetchedMetric in fetchedData) {
-          final index =
-              _metrics.indexWhere((m) => m.type == fetchedMetric.type);
-          if (index != -1) {
-            _metrics[index] = fetchedMetric;
+          for (var fetchedMetric in fetchedData) {
+            final index =
+                _metrics.indexWhere((m) => m.type == fetchedMetric.type);
+            if (index != -1) {
+              _metrics[index] = fetchedMetric;
+            }
           }
         }
       }
@@ -138,16 +193,30 @@ class HealthMetricsViewModel extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      _initializeDefaultMetrics();
+      if (!_isInitialized) {
+        await initialize();
+        return;
+      }
 
+      if (_userId.isEmpty) {
+        await _initializeUserId();
+        
+        if (_userId.isEmpty) {
+          print('Cannot refresh data: No user ID found');
+          return;
+        }
+      }
+
+      _initializeDefaultMetrics();
       final authorized = await _healthService.requestAuthorization();
       if (authorized) {
-        final fetchedData = await _healthService.fetchHealthData();
+        final fetchedData = await _healthService.fetchHealthData(
+            _userId, _userProfileProvider.userProfile);
 
         if (fetchedData.isNotEmpty) {
-          await _databaseService.insertHealthMetrics(fetchedData);
+          await _databaseService.insertHealthMetrics(
+              fetchedData, _userId, _userProfileProvider.userProfile);
 
-          // Update metrics with new data
           for (var fetchedMetric in fetchedData) {
             final index =
                 _metrics.indexWhere((m) => m.type == fetchedMetric.type);

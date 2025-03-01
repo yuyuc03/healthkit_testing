@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:healthkit_integration_testing/providers/user_profile_provider.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   @override
@@ -149,7 +151,23 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
   }
 
   void _saveProfile() {
-    // Save profile data to database
+    final userProfileProvider =
+        Provider.of<UserProfileProvider>(context, listen: false);
+
+    final age = int.tryParse(_ageController.text) ?? 30;
+    final height = double.tryParse(_heightController.text) ?? 170.0;
+    final weight = double.tryParse(_weightController.text) ?? 70.0;
+
+    userProfileProvider.updateUserProfile(
+      age: age,
+      gender: _gender,
+      height: height,
+      weight: weight,
+      smoke: _smoke,
+      alco: _alco,
+      active: _active,
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Profile updated successfully')),
     );

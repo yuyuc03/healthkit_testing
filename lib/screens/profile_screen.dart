@@ -91,7 +91,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   Divider(),
 
-                  // Health Data Section
                   _buildSectionHeader('Health Data'),
                   healthKitProvider.isLoading
                       ? Center(child: CircularProgressIndicator())

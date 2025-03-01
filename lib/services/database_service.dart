@@ -1,5 +1,6 @@
 // database_service.dart
 import 'package:health/health.dart';
+import 'package:healthkit_integration_testing/models/user_profile.dart';
 import 'package:mongo_dart/mongo_dart.dart';
 import '../models/health_metric.dart';
 
@@ -32,7 +33,7 @@ class DatabaseService {
     }
   }
 
-  Future<void> insertHealthMetrics(List<HealthMetric> metrics) async {
+  Future<void> insertHealthMetrics(List<HealthMetric> metrics, String userId, UserProfile? userProfile) async {
     await checkDatabaseStatus();
     if (metrics.isEmpty) return;
 
@@ -49,10 +50,23 @@ class DatabaseService {
 
       final document = {
         'timestamp': timestamp.toIso8601String(),
-        'user_id': 'user123',
+        'user_id': userId,
         'metrics': metricsMap,
         'updated_at': DateTime.now().toIso8601String()
       };
+
+      if (userProfile != null) {
+        document['user_profile'] = {
+          'age': userProfile.age,
+          'gender': userProfile.gender,
+          'height': userProfile.height,
+          'weight': userProfile.weight,
+          'bmi': userProfile.calculateBMI(),
+          'smoke': userProfile.smoke ? 1 : 0,
+          'alco': userProfile.alco ? 1 : 0,
+          'active': userProfile.active ? 1 : 0,
+        };
+      }
 
       await _healthCollection!.update(
         where

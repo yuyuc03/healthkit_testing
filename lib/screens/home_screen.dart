@@ -4,13 +4,19 @@ import '../../viewmodels/health_metrics_viewmodel.dart';
 import '../../widgets/health_metrics_card.dart';
 import '../../widgets/activity_ring.dart';
 import './profile_screen.dart';
+import '../providers/user_profile_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
     return ChangeNotifierProvider(
-      create: (_) => HealthMetricsViewModel()..initializeHealth(),
+      create: (context) {
+        final viewModel = HealthMetricsViewModel(
+            Provider.of<UserProfileProvider>(context, listen: false));
+        Future.delayed(Duration.zero, () => viewModel.initialize());
+        return viewModel;
+      },
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Consumer<HealthMetricsViewModel>(

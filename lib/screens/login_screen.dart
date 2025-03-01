@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/register_screen.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import '../screens/home_screen.dart';
@@ -41,6 +42,12 @@ class _LoginScreenState extends State<LoginScreen> {
             await verifyUserCredentials(email, password);
 
         if (isAuthenticated) {
+          final userId = await getUserIdFromLogin(email);
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('current_user_id', userId);
+          print('Stored user ID in preferences: $userId');
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -93,13 +100,38 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<String> getUserIdFromLogin(String email) async {
+    mongo.Db? db;
+    try {
+      final String connectionString =
+          'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
+      db = await mongo.Db.create(connectionString);
+      await db.open();
+
+      final userCollection = db.collection('users');
+      final user = await userCollection.findOne(mongo.where.eq('email', email));
+
+      if (user != null && user['_id'] != null) {
+        return user['_id'].toString();
+      }
+      throw Exception('User ID not found');
+    } catch (e) {
+      print('Error getting user ID: $e');
+      throw Exception('Cannot get user ID: $e');
+    } finally {
+      if (db != null && db.isConnected) {
+        await db.close();
+      }
+    }
+  }
+
   Future<String> _hashPassword(String password) async {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -131,7 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 5),
-
                         const Text(
                           'Welcome Back!!',
                           style: TextStyle(
@@ -139,7 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        
                         Text(
                           'Please enter your credential to continue',
                           style: TextStyle(
@@ -151,7 +181,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
                   if (_errorMessage.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
@@ -164,7 +193,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -191,7 +219,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
@@ -216,7 +243,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -224,7 +250,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text('Forgot Password?'),
                     ),
                   ),
-
                   ElevatedButton(
                     onPressed: _isLoading ? null : _loginUser,
                     style: ElevatedButton.styleFrom(
@@ -234,27 +259,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: _isLoading 
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        )
-                      : const Text(
-                          'Login',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
                   ),
-                  
                   const SizedBox(height: 50),
-
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey.shade400)),
@@ -269,7 +292,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -293,7 +315,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -312,8 +333,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text(
                           'Sign Up',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple),
                         ),
                       ),
                     ],
@@ -346,4 +367,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

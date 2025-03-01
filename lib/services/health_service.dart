@@ -1,4 +1,5 @@
 import 'package:health/health.dart';
+import 'package:healthkit_integration_testing/models/user_profile.dart';
 import '../models/health_metric.dart';
 import '../services/database_service.dart';
 
@@ -37,7 +38,7 @@ class HealthService {
     }
   }
 
-  Future<List<HealthMetric>> fetchHealthData() async {
+  Future<List<HealthMetric>> fetchHealthData(String userId, UserProfile? userProfile) async {
     try {
       if (!_isInitialized) {
         await initialize();
@@ -66,8 +67,8 @@ class HealthService {
       }
 
       if (healthMetrics.isNotEmpty) {
-        await _databaseService.insertHealthMetrics(healthMetrics);
-        print('Saved ${healthMetrics.length} health metrics to MongoDB');
+        await _databaseService.insertHealthMetrics(healthMetrics, userId, userProfile);
+        print('Saved ${healthMetrics.length} health metrics to MongoDB for user $userId');
 
         for (var metric in healthMetrics) {
           print(
