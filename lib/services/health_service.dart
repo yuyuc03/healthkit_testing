@@ -2,11 +2,15 @@ import 'package:health/health.dart';
 import 'package:healthkit_integration_testing/models/user_profile.dart';
 import '../models/health_metric.dart';
 import '../services/database_service.dart';
+import 'dart:async';
 
 class HealthService {
   final Health health = Health();
   final DatabaseService _databaseService = DatabaseService();
   bool _isInitialized = false;
+  Timer? _syncTimer;
+  String? _currentUserId;
+  UserProfile? _currentUserProfile;
 
   final List<HealthDataType> types = [
     HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
@@ -28,6 +32,28 @@ class HealthService {
     }
   }
 
+  void startPeriodSync(String userId, UserProfile? userProfile,
+      {Duration interval = const Duration(minutes: 1)}) {
+    _currentUserId = userId;
+    _currentUserProfile = userProfile;
+    _syncTimer = Timer.periodic(interval, (timer) {
+      _performSync();
+    });
+  }
+
+  void stopPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _currentUserId = null;
+    _currentUserProfile = null;
+  }
+
+  Future<void> _performSync() async {
+    if (_currentUserId != null) {
+      await fetchHealthData(_currentUserId!, _currentUserProfile);
+    }
+  }
+
   Future<bool> requestAuthorization() async {
     try {
       await initialize();
@@ -38,7 +64,8 @@ class HealthService {
     }
   }
 
-  Future<List<HealthMetric>> fetchHealthData(String userId, UserProfile? userProfile) async {
+  Future<List<HealthMetric>> fetchHealthData(
+      String userId, UserProfile? userProfile) async {
     try {
       if (!_isInitialized) {
         await initialize();
@@ -67,8 +94,10 @@ class HealthService {
       }
 
       if (healthMetrics.isNotEmpty) {
-        await _databaseService.insertHealthMetrics(healthMetrics, userId, userProfile);
-        print('Saved ${healthMetrics.length} health metrics to MongoDB for user $userId');
+        await _databaseService.insertHealthMetrics(
+            healthMetrics, userId, userProfile);
+        print(
+            'Saved ${healthMetrics.length} health metrics to MongoDB for user $userId');
 
         for (var metric in healthMetrics) {
           print(
@@ -156,6 +185,7 @@ class HealthService {
   }
 
   Future<void> dispose() async {
+    stopPeriodicSync();
     await _databaseService.close();
   }
 }

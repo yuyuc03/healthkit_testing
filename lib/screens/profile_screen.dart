@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:healthkit_integration_testing/screens/home_screen.dart';
 import 'package:healthkit_integration_testing/screens/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/healthkit_provider.dart';
@@ -165,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onPressed: () {
                                 Navigator.pushAndRemoveUntil(
                                   context,
-                                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                                  MaterialPageRoute(builder: (context) => LoginScreen(healthService: healthKitProvider.healthService)),
                                   (route) => false,
                                 );
                               },

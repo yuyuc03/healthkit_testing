@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:healthkit_integration_testing/services/health_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:health/health.dart';
 
 class HealthKitProvider with ChangeNotifier {
+  final HealthService healthService = HealthService();
   static const String healthKitKey = 'healthkit_connected';
   bool _isLoading = true;
   bool _healthKitConnected = false;

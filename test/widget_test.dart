@@ -7,13 +7,19 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:healthkit_integration_testing/main.dart';
+import 'package:healthkit_integration_testing/services/health_service.dart';
+import 'package:mockito/mockito.dart';
+
+class MockHealthService extends Mock implements HealthService {}
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    // Create a mock HealthService
+    final mockHealthService = MockHealthService();
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+    await tester.pumpWidget(MyApp(healthService: mockHealthService));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);
@@ -28,3 +34,4 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 }
+

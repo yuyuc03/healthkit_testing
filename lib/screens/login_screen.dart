@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:healthkit_integration_testing/models/user_profile.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_profile_provider.dart';
+import 'package:healthkit_integration_testing/services/health_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/register_screen.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
@@ -7,7 +11,8 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  final HealthService healthService;
+  const LoginScreen({Key? key, required this.healthService}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -48,6 +53,10 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.setString('current_user_id', userId);
           print('Stored user ID in preferences: $userId');
 
+          final UserProfile = await getUserProfile(userId);
+
+          widget.healthService.startPeriodSync(userId, UserProfile);
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -66,6 +75,27 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<UserProfile> getUserProfile(String userId) async {
+    try {
+      final userProfileProvider =
+          Provider.of<UserProfileProvider>(context, listen: false);
+      await userProfileProvider.loadUserProfile(userId);
+
+      if (userProfileProvider.userProfile != null) {
+        return userProfileProvider.userProfile!;
+      }
+
+      final UserProfile profile = await UserProfile.fromHealthKit(userId);
+
+      await userProfileProvider.saveUserProfile(profile);
+
+      return profile;
+    } catch (e) {
+      print('Error getting user profile: $e');
+      throw Exception('Cannot get user profile: $e');
     }
   }
 

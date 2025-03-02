@@ -18,6 +18,7 @@ class DatabaseService {
         await _db!.open();
         _healthCollection = _db!.collection('health_metrics');
         _mlModelCollection = _db!.collection('ml_model_data');
+        _userProfileCollection = _db!.collection('user_profiles');
         _isInitialized = true;
 
         await _healthCollection!
@@ -36,12 +37,29 @@ class DatabaseService {
     }
   }
 
+  Future<UserProfile?> getUserProfile(String userId) async {
+    await checkDatabaseStatus();
+    try {
+      final result =
+          await _userProfileCollection!.findOne(where.eq('user_id', userId));
+      if (result != null) {
+        return UserProfile.fromMap(result);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      return null;
+    }
+  }
+
   Future<void> insertHealthMetrics(List<HealthMetric> metrics, String userId,
       UserProfile? userProfile) async {
     await checkDatabaseStatus();
     if (metrics.isEmpty) return;
 
     try {
+      final latestUserProfile = await getUserProfile(userId);
+
       final timestamp = DateTime.now().toIso8601String();
       final metricsMap = <String, Map<String, dynamic>>{};
       final mlMetrics = <String, dynamic>{};
@@ -119,18 +137,18 @@ class DatabaseService {
         final orderedMLData = {
           'timestamp': timestamp,
           'user_id': userId,
-          'age': userProfile.age.toDouble(),
-          'gender': userProfile.gender,
-          'height': userProfile.height,
-          'weight': userProfile.weight,
-          'bmi': userProfile.calculateBMI(),
+          'age': latestUserProfile?.age?.toDouble() ?? 0.0,
+          'gender': latestUserProfile?.gender ?? 0,
+          'height': latestUserProfile?.height ?? 0.0,
+          'weight': latestUserProfile?.weight ?? 0.0,
+          'bmi': latestUserProfile?.calculateBMI() ?? 0.0,
           'ap_hi': mlMetrics['ap_hi'],
           'ap_lo': mlMetrics['ap_lo'],
           'cholesterol': mlMetrics['cholesterol'],
           'gluc': mlMetrics['gluc'],
-          'smoke': userProfile.smoke ? 1 : 0,
-          'alco': userProfile.alco ? 1 : 0,
-          'active': userProfile.active ? 1 : 0
+          'smoke': latestUserProfile?.smoke == true ? 1 : 0,
+          'alco': latestUserProfile?.alco == true ? 1 : 0,
+          'active': latestUserProfile?.active == true ? 1 : 0
         };
         await _mlModelCollection!.insertOne(orderedMLData);
         print("ML data inserted: $orderedMLData");
