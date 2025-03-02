@@ -1,101 +1,119 @@
-from fastapi import FastAPI, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from endpoints import router
-from mongodb import init_db, get_db_connection
-from motor.motor_asyncio import AsyncIOMotorClient
-import pickle
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from pymongo import MongoClient
+from datetime import datetime
+import joblib
+import os
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from config import MODEL_PATH
-import asyncio
-import time
-from datetime import datetime, timedelta
 import certifi
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+client = MongoClient("mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics", tlsCAFile=certifi.where())
+prediction_db = client["health_metrics"]
+health_metrics_db = client["test"]
 
-MONGO_URI = "mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics"
-DB_NAME = "health_metrics"
+prediction_collection = prediction_db["prediction"]
+ml_model_data_collection = health_metrics_db["ml_model_data"]
 
-@app.on_event("startup")
-async def startup_event():
-    app.mongodb_client = AsyncIOMotorClient(
-        MONGO_URI,
-        tlsCAFile=certifi.where()
-    )
-    app.mongodb = app.mongodb_client[DB_NAME]
-    print("Connected to MongoDB!")
+model_path = os.path.join('ml_models', 'health_model.joblib')
+model_data = joblib.load(model_path)
+svm_model = model_data['model']
+scaler = model_data['scaler']
+feature_names = model_data['feature_name']
+print(f"Loaded model type: {type(svm_model)}")
+print(f"Loaded scaler type: {type(scaler)}")
+print(f"Loaded feature names: {feature_names}")
 
-    await init_db()
+class PredictionInput(BaseModel):
+    timestamp: datetime
+    user_id: str
+    age: float
+    gender: int
+    height: float
+    weight: float
+    bmi: float
+    ap_hi: float
+    ap_lo: float
+    cholesterol: int
+    gluc: int
+    smoke: int
+    alco: int
+    active: int
 
-    asyncio.create_task(scheduled_batch_predictions())
+class PredictionOutput(BaseModel):
+    prediction: float
+    risk_probability: float
 
-async def scheduled_batch_predictions():
-    while True:
+@app.post("/predict", response_model=PredictionOutput)
+async def predict():
+    try:
+        latest_data = ml_model_data_collection.find_one(sort=[("timestamp", -1)])
+        print(f"Latest data: {latest_data}")
+
+        if not latest_data:
+            raise HTTPException(status_code=404, detail="No data found in the ml_model_data collection")
+
+        input_data = np.array([[
+            latest_data["age"],
+            latest_data["gender"],
+            latest_data["height"],
+            latest_data["weight"],
+            latest_data["bmi"],
+            latest_data["ap_hi"],
+            latest_data["ap_lo"],
+            latest_data["cholesterol"],
+            latest_data["gluc"],
+            latest_data["smoke"],
+            latest_data["alco"],
+            latest_data["active"]
+        ]])
+        print(f"Input data shape: {input_data.shape}")
+
         try:
-            db = app.mongodb
-            yesterday = datetime.now() - timedelta(days=1)
-            
-            cursor = db.health_data.find({
-                "timestamp": {"$gte": yesterday.isoformat()}
-            })
+            scaled_input = scaler.transform(input_data)
+            probabilities = svm_model.predict_proba(scaled_input)[0]
+            risk_probability = probabilities[1]  # Assuming 1 is the positive class
+            prediction = 1 if risk_probability > 0.5 else 0
+            print(f"Prediction: {prediction}, Risk Probability: {risk_probability}")
+        except Exception as model_error:
+            print(f"Error during model prediction: {str(model_error)}")
+            raise HTTPException(status_code=500, detail=f"Model prediction error: {str(model_error)}")
 
-            with open(MODEL_PATH, 'rb') as file:
-                model_data = pickle.load(file)
-                model = model_data['model']
-                scaler = model_data['scaler']
-            
-            async for health_data in cursor:
-                features = np.array([[
-                    health_data.get("age"),
-                    health_data.get("gender"),
-                    health_data.get("height"),
-                    health_data.get("weight"),
-                    health_data.get("bmi"),
-                    health_data.get("ap_hi"),
-                    health_data.get("ap_lo"),
-                    health_data.get("cholesterol"),
-                    health_data.get("gluc"),
-                    health_data.get("smoke"),
-                    health_data.get("alco"),
-                    health_data.get("active")
-                ]])
-
-                features_scaled = scaler.transform(features)
-                prediction = model.predict(features_scaled)[0]
-
-                try:
-                    probability = model.predict_proba(features_scaled)[0][1]
-                except AttributeError:
-                    probability = None
-                
-                # Save prediction to MongoDB
-                await db.predictions.insert_one({
-                    "user_id": health_data.get("user_id"),
-                    "timestamp": datetime.now().isoformat(),
-                    "prediction": int(prediction),
-                    "probability": float(probability) if probability is not None else 0.0,
-                    "health_data_id": health_data.get("_id")
-                })
-            
-            print("Scheduled batch predictions completed")
-
-        except Exception as e:
-            print(f"Error in scheduled batch predictions: {e}")
+        prediction_store = {
+            "prediction": float(prediction),
+            "risk_probability": float(risk_probability),
+            "input_data": {k: v for k, v in latest_data.items() if k != '_id'}
+        }
         
-        await asyncio.sleep(60)
+        try:
+            prediction_collection.insert_one(prediction_store)
+            print("Prediction stored successfully")
+        except Exception as db_error:
+            print(f"Error storing prediction: {str(db_error)}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    app.mongodb_client.close()
-    print("MongoDB connection closed")
+        return PredictionOutput(prediction=float(prediction), risk_probability=float(risk_probability))
+    except Exception as e:
+        print(f"Unexpected error in predict endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-app.include_router(router, prefix="/api/v1")
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Health Metrics API"}
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
