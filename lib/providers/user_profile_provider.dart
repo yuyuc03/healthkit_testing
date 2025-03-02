@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import '../models/user_profile.dart';
@@ -60,23 +62,29 @@ class UserProfileProvider with ChangeNotifier {
   Future<void> saveUserProfile(UserProfile profile) async {
     mongo.Db? db;
     try {
+      print("Trying to save profile for user: ${profile.userId}");
       final String connectionString =
           'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
       db = await mongo.Db.create(connectionString);
       await db.open();
 
       final userCollection = db.collection('user_profiles');
+      print(
+          "Connected to MongoDB, updating profile with data: ${profile.toMap()}");
       await userCollection.update(
           mongo.where.eq('user_id', profile.userId), profile.toMap(),
           upsert: true);
 
       _userProfile = profile;
+      print("Profile saved successfully");
       notifyListeners();
     } catch (e) {
-      print("Error saving profile to database: $e");
+      print("Cannot save profile to database: $e");
+      throw e; 
     } finally {
       if (db != null && db.isConnected) {
         await db.close();
+        print("MongoDB connection closed");
       }
     }
   }
@@ -90,8 +98,12 @@ class UserProfileProvider with ChangeNotifier {
     bool? alco,
     bool? active,
   }) async {
-    if (_userProfile == null) return;
+    if (_userProfile == null) {
+      print("Cannot update profile: No user profile loaded");
+      return;
+    }
 
+    print("Updating profile for user: ${_userProfile!.userId}");
     final updatedProfile = UserProfile(
       userId: _userProfile!.userId,
       age: age ?? _userProfile!.age,
