@@ -1,13 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:healthkit_integration_testing/services/api_service.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/health_metrics_viewmodel.dart';
 import '../../widgets/health_metrics_card.dart';
 import '../../widgets/activity_ring.dart';
 import './profile_screen.dart';
 import '../providers/user_profile_provider.dart';
+import 'dart:async';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final apiService = ApiService();
+  Timer? _timer;
+
+  void fetchPrediction() async {
+    try {
+      final prediction = await apiService.getPrediction();
+      print('Prediction: ${prediction['prediction']}');
+      print('Risk Probability: ${prediction['risk_probability']}');
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(Duration(minutes: 1), (timer) {
+      fetchPrediction();
+    });
+  }
+
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
     return ChangeNotifierProvider(
@@ -57,7 +84,8 @@ class HomeScreen extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.all(20),
                             child: GestureDetector(
-                              onTap: () {
+                              onTap: () async {
+                                //fetchPrediction();
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(

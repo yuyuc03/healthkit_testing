@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/healthkit_provider.dart';
 import './profile_edit_screen.dart';
 import './privacy_policy_screen.dart';
+import 'lifestyle_and_cultural_info.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -76,7 +77,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Account Section
                   _buildSectionHeader('Account'),
                   ListTile(
                     leading: Icon(Icons.person),
@@ -88,8 +88,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         MaterialPageRoute(
                             builder: (context) => ProfileEditScreen())),
                   ),
+                  ListTile(
+                    leading: Icon(Icons.language),
+                    title: Text('Lifestyle and Cultural Info'),
+                    subtitle:
+                        Text('Update your personal and cultural information'),
+                    trailing: Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              LifestyleAndCulturalInfo()),
+                    ),
+                  ),
                   Divider(),
-
                   _buildSectionHeader('Health Data'),
                   healthKitProvider.isLoading
                       ? Center(child: CircularProgressIndicator())
@@ -120,21 +132,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ]));
                             }
                           }),
-
                   Divider(),
-
                   _buildSectionHeader('Notifications'),
                   SwitchListTile(
                       secondary: Icon(Icons.notifications),
                       title: Text('Enable Notifications'),
                       subtitle: Text('Receive health alerts and reminders'),
-                      value: false, 
+                      value: false,
                       onChanged: (value) {
                         // Logic haven't add hereeeee!!!!!
                       }),
-
                   Divider(),
-
                   _buildSectionHeader('Legal'),
                   ListTile(
                     leading: Icon(Icons.privacy_tip),
@@ -145,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         MaterialPageRoute(
                             builder: (context) => PrivacyPolicyScreen())),
                   ),
-
                   ListTile(
                     leading: Icon(Icons.logout, color: Colors.red),
                     title: Text('Log Out', style: TextStyle(color: Colors.red)),
@@ -164,7 +171,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onPressed: () {
                                 Navigator.pushAndRemoveUntil(
                                   context,
-                                  MaterialPageRoute(builder: (context) => LoginScreen(healthService: healthKitProvider.healthService)),
+                                  MaterialPageRoute(
+                                      builder: (context) => LoginScreen(
+                                          healthService:
+                                              healthKitProvider.healthService)),
                                   (route) => false,
                                 );
                               },

@@ -33,7 +33,7 @@ class HealthService {
   }
 
   void startPeriodSync(String userId, UserProfile? userProfile,
-      {Duration interval = const Duration(minutes: 1)}) {
+      {Duration interval = const Duration(minutes: 60)}) {
     _currentUserId = userId;
     _currentUserProfile = userProfile;
     _syncTimer = Timer.periodic(interval, (timer) {

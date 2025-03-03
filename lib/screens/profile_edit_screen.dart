@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:healthkit_integration_testing/providers/user_profile_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_profile.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
 
 class ProfileEditScreen extends StatefulWidget {
   @override
@@ -35,26 +34,29 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
     });
 
     try {
-      final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-      
+      final userProfileProvider =
+          Provider.of<UserProfileProvider>(context, listen: false);
+
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('current_user_id') ?? '';
-      
+
       if (userId.isEmpty) {
         print('Warning: No user ID found when loading profile data');
         return;
       }
-      
+
       if (userProfileProvider.userProfile == null) {
         await userProfileProvider.loadUserProfile(userId);
       }
- 
+
       if (userProfileProvider.userProfile != null) {
         setState(() {
           _ageController.text = userProfileProvider.userProfile!.age.toString();
           _gender = userProfileProvider.userProfile!.gender;
-          _heightController.text = userProfileProvider.userProfile!.height.toString();
-          _weightController.text = userProfileProvider.userProfile!.weight.toString();
+          _heightController.text =
+              userProfileProvider.userProfile!.height.toString();
+          _weightController.text =
+              userProfileProvider.userProfile!.weight.toString();
           _smoke = userProfileProvider.userProfile!.smoke;
           _alco = userProfileProvider.userProfile!.alco;
           _active = userProfileProvider.userProfile!.active;
@@ -81,114 +83,117 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
           ),
         ],
       ),
-      body: _isLoading 
-        ? Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Personal Information',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              SizedBox(height: 16),
-              TextField(
-                controller: _ageController,
-                decoration: InputDecoration(
-                  labelText: 'Age',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(height: 16),
-              Text('Gender'),
-              Row(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Radio(
-                    value: 1,
-                    groupValue: _gender,
+                  Text('Personal Information',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _ageController,
+                    decoration: InputDecoration(
+                      labelText: 'Age',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 16),
+                  Text('Gender'),
+                  Row(
+                    children: [
+                      Radio(
+                        value: 1,
+                        groupValue: _gender,
+                        onChanged: (value) {
+                          setState(() {
+                            _gender = value as int;
+                          });
+                        },
+                      ),
+                      Text('Male'),
+                      SizedBox(width: 16),
+                      Radio(
+                        value: 2,
+                        groupValue: _gender,
+                        onChanged: (value) {
+                          setState(() {
+                            _gender = value as int;
+                          });
+                        },
+                      ),
+                      Text('Female'),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _heightController,
+                    decoration: InputDecoration(
+                      labelText: 'Height (cm)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _weightController,
+                    decoration: InputDecoration(
+                      labelText: 'Weight (kg)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 24),
+                  Text('Lifestyle',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SwitchListTile(
+                    title: Text('Do you smoke?'),
+                    value: _smoke,
                     onChanged: (value) {
                       setState(() {
-                        _gender = value as int;
+                        _smoke = value;
                       });
                     },
                   ),
-                  Text('Male'),
-                  SizedBox(width: 16),
-                  Radio(
-                    value: 2,
-                    groupValue: _gender,
+                  SwitchListTile(
+                    title: Text('Do you consume alcohol?'),
+                    value: _alco,
                     onChanged: (value) {
                       setState(() {
-                        _gender = value as int;
+                        _alco = value;
                       });
                     },
                   ),
-                  Text('Female'),
+                  SwitchListTile(
+                    title: Text('Are you physically active?'),
+                    subtitle:
+                        Text('Override automatic detection from HealthKit'),
+                    value: _active,
+                    onChanged: (value) {
+                      setState(() {
+                        _active = value;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _saveProfile,
+                      child: Text('Save Profile'),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _heightController,
-                decoration: InputDecoration(
-                  labelText: 'Height (cm)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _weightController,
-                decoration: InputDecoration(
-                  labelText: 'Weight (kg)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(height: 24),
-              Text('Lifestyle',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              SwitchListTile(
-                title: Text('Do you smoke?'),
-                value: _smoke,
-                onChanged: (value) {
-                  setState(() {
-                    _smoke = value;
-                  });
-                },
-              ),
-              SwitchListTile(
-                title: Text('Do you consume alcohol?'),
-                value: _alco,
-                onChanged: (value) {
-                  setState(() {
-                    _alco = value;
-                  });
-                },
-              ),
-              SwitchListTile(
-                title: Text('Are you physically active?'),
-                subtitle: Text('Override automatic detection from HealthKit'),
-                value: _active,
-                onChanged: (value) {
-                  setState(() {
-                    _active = value;
-                  });
-                },
-              ),
-              SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveProfile,
-                  child: Text('Save Profile'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
     );
   }
 
@@ -196,21 +201,21 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      final userProfileProvider = Provider.of<UserProfileProvider>(context, listen: false);
-      
-      // Get current user ID
+      final userProfileProvider =
+          Provider.of<UserProfileProvider>(context, listen: false);
+
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('current_user_id') ?? '';
-      
+
       if (userId.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: User not logged in')),
         );
         return;
       }
-      
+
       final age = int.tryParse(_ageController.text) ?? 30;
       final height = double.tryParse(_heightController.text) ?? 170.0;
       final weight = double.tryParse(_weightController.text) ?? 70.0;
@@ -238,7 +243,7 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
           active: _active,
         );
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile updated successfully')),
       );
