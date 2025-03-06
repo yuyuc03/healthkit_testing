@@ -12,7 +12,7 @@ class LifestyleAndCulturalInfo extends StatefulWidget {
 class _LifestyleAndCulturalInfoState extends State<LifestyleAndCulturalInfo> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  late String _userId;
+  String _userId = '';
 
   TextEditingController ethnicityController = TextEditingController();
   TextEditingController countryOfOriginController = TextEditingController();
@@ -25,10 +25,20 @@ class _LifestyleAndCulturalInfoState extends State<LifestyleAndCulturalInfo> {
   @override
   void initState() {
     super.initState();
-    _userId = Provider.of<UserProfileProvider>(context, listen: false)
-            .userProfile
-            ?.userId ??
-        '';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeUserId();
+    });
+  }
+
+  void _initializeUserId() {
+    final userProfile = Provider.of<UserProfileProvider>(context, listen: false).userProfile;
+    if (userProfile != null) {
+      setState(() {
+        _userId = userProfile.userId;
+      });
+    } else {
+      print('Warning: User profile is null');
+    }
   }
 
   Future<void> insertGptData() async {

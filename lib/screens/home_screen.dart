@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:healthkit_integration_testing/services/api_service.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../viewmodels/health_metrics_viewmodel.dart';
 import '../../widgets/health_metrics_card.dart';
 import '../../widgets/activity_ring.dart';
 import './profile_screen.dart';
 import '../providers/user_profile_provider.dart';
 import 'dart:async';
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -15,24 +17,41 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final apiService = ApiService();
-  Timer? _timer;
+  String _suggestion = '';
 
-  void fetchPrediction() async {
+  void fetchPredictionAndSuggestion() async {
     try {
-      final prediction = await apiService.getPrediction();
+      final prediction = await apiService.fetchPrediction();
       print('Prediction: ${prediction['prediction']}');
       print('Risk Probability: ${prediction['risk_probability']}');
+
+      final prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('current_user_id');
+
+      if (userId != null && userId.isNotEmpty) {
+        final response = await apiService.fetchSuggestion(userId);
+
+        if (response.statusCode == 200) {
+          setState(() {
+            _suggestion = json.decode(response.body)['suggestion'];
+          });
+        } else {
+          throw Exception('Failed to fetch suggestion');
+        }
+      } else {
+        print('User ID not found');
+      }
     } catch (e) {
       print('Error: $e');
+      setState(() {
+        _suggestion = "An error occurred:(";
+      });
     }
   }
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(Duration(minutes: 1), (timer) {
-      fetchPrediction();
-    });
   }
 
   Widget build(BuildContext context) {
@@ -85,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.all(20),
                             child: GestureDetector(
                               onTap: () async {
-                                //fetchPrediction();
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -140,6 +158,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           height: 80,
+                          child: Text(
+                            _suggestion.isNotEmpty
+                                ? _suggestion
+                                : 'Fetching suggestion.....',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF1D1B4B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Container(

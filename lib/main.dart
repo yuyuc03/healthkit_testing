@@ -42,7 +42,6 @@ class MyApp extends StatelessWidget {
           update: (context, userProfileProvider, previous) =>
               previous ?? HealthMetricsViewModel(userProfileProvider),
         ),
-        Provider.value(value: healthService),
       ],
       child: MaterialApp(
         title: 'Health App',

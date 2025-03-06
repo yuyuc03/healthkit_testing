@@ -26,7 +26,6 @@ class HealthKitProvider with ChangeNotifier {
 
       _healthKitConnected = savedStatus;
 
-      // Verify with HealthKit
       Health health = Health();
       bool isAuthorized = await health.hasPermissions([
             HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
@@ -75,7 +74,6 @@ class HealthKitProvider with ChangeNotifier {
 
       _healthKitConnected = authorized;
 
-      // Save connection status
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(healthKitKey, authorized);
 

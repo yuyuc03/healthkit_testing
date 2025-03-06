@@ -125,7 +125,7 @@ class UserProfile {
       List<HealthDataPoint> energyData = await health.getHealthDataFromTypes(
         types: [HealthDataType.ACTIVE_ENERGY_BURNED],
         startTime: startTime,
-        endTime: DateTime.now(),
+        endTime: now,
       );
 
       double totalCaloriesBurned = 0;
@@ -136,7 +136,7 @@ class UserProfile {
         }
       }
 
-      return totalCaloriesBurned >= 2000;
+      return totalCaloriesBurned >= 1800;
     } catch (e) {
       print("Error determining activity level: $e");
       return false;
