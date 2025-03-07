@@ -56,6 +56,16 @@ class GPTRequest(BaseModel):
 class GPTResponse(BaseModel):
     suggestion: str
 
+class UserProfileUpdate(BaseModel):
+    user_id: str
+    age: float
+    gender: int
+    height: float
+    weight: float
+    smoke: int
+    alco: int
+    active: int
+
 @app.post("/predict/", response_model = PredictionOutput)
 async def predict():
     try:
@@ -87,10 +97,10 @@ async def predict():
 
         try:
             scaled_input = scaler.transform(input_data)
+            prediction = float(svm_model.predict(scaled_input)[0])
             probabilities = svm_model.predict_proba(scaled_input)[0]
             risk_probability = probabilities[1]  
 
-            prediction = 1 if risk_probability > 0.6 else 0  
             print(f"Prediction Result: {prediction}, Probability of getting heart disease: {risk_probability}")
         except Exception as model_error:
             print(f"The prediction process was failed: {str(model_error)}")
@@ -188,6 +198,37 @@ async def generate_suggestion(request: GPTRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calling GPT API: {str(e)}")
+
+@app.post("/update_user_data/")
+async def update_user_data(data: UserProfileUpdate):
+    try:
+        # Calculate BMI
+        bmi = data.weight / ((data.height / 100) ** 2)
+        
+        # Create update document
+        update_data = {
+            "timestamp": datetime.now().isoformat(),
+            "user_id": data.user_id,
+            "age": data.age,
+            "gender": data.gender,
+            "height": data.height,
+            "weight": data.weight,
+            "bmi": round(bmi, 2),
+            "smoke": data.smoke,
+            "alco": data.alco,
+            "active": data.active
+        }
+        
+        # Update or insert into ml_model_data collection
+        result = await ml_model_data_collection.update_one(
+            {"user_id": data.user_id},
+            {"$set": update_data},
+            upsert=True
+        )
+        
+        return {"message": "User data updated successfully", "modified_count": result.modified_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating user data: {str(e)}")
 
 @app.get("/")
 async def root():

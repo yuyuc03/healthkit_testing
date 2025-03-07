@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:healthkit_integration_testing/providers/user_profile_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_profile.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ProfileEditScreen extends StatefulWidget {
   @override
@@ -219,6 +221,7 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
       final age = int.tryParse(_ageController.text) ?? 30;
       final height = double.tryParse(_heightController.text) ?? 170.0;
       final weight = double.tryParse(_weightController.text) ?? 70.0;
+      final bmi = weight / ((height / 100) * (height / 100));
 
       if (userProfileProvider.userProfile == null) {
         final newProfile = UserProfile(
@@ -242,6 +245,25 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
           alco: _alco,
           active: _active,
         );
+      }
+
+      try {
+        final mlModelData = {
+          'user_id': userId,
+          'timestamp': DateTime.now().toIso8601String(),
+          'age': age.toDouble(),
+          'gender': _gender,
+          'height': height,
+          'weight': weight,
+          'bmi': bmi.roundToDouble(),
+          'smoke': _smoke ? 1 : 0,
+          'alco': _alco ? 1 : 0,
+          'active': _active ? 1 : 0,
+        };
+
+        await userProfileProvider.updateMLModelData(mlModelData);
+      } catch (e) {
+        print('Error updating ML model data: $e');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(

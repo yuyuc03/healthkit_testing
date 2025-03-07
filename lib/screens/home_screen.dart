@@ -18,40 +18,110 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final apiService = ApiService();
   String _suggestion = '';
+  Timer? _timer;
+  bool _isLoading = false;
+  double _riskProbability = 0.0;
+  int _prediction = 0;
+  DateTime _lastUpdated = DateTime.now();
 
   void fetchPredictionAndSuggestion() async {
+  if (mounted) {
+    setState(() {
+      _isLoading = true;
+    });
+  }
+  try {
     try {
       final prediction = await apiService.fetchPrediction();
       print('Prediction: ${prediction['prediction']}');
       print('Risk Probability: ${prediction['risk_probability']}');
 
-      final prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('current_user_id');
-
-      if (userId != null && userId.isNotEmpty) {
-        final response = await apiService.fetchSuggestion(userId);
-
-        if (response.statusCode == 200) {
-          setState(() {
-            _suggestion = json.decode(response.body)['suggestion'];
-          });
-        } else {
-          throw Exception('Failed to fetch suggestion');
-        }
-      } else {
-        print('User ID not found');
+      if (mounted) {
+        setState(() {
+          _prediction = prediction['prediction'];
+          _riskProbability = prediction['risk_probability'];
+          _lastUpdated = DateTime.now();
+        });
       }
     } catch (e) {
-      print('Error: $e');
+      print('Error fetching prediction: $e');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    String? userId = prefs.getString('current_user_id');
+    print('User ID from SharedPreferences: $userId');
+
+    if (userId != null && userId.isNotEmpty) {
+      try {
+        final response = await apiService.fetchSuggestion(userId);
+        print('Suggestion API response status: ${response.statusCode}');
+        print('Suggestion API response body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          if (mounted) {
+            setState(() {
+              _suggestion = json.decode(response.body)['suggestion'];
+              _isLoading = false;
+            });
+          }
+        } else {
+          print('Error response from suggestion API: ${response.body}');
+          if (mounted) {
+            setState(() {
+              _suggestion = "Error: ${response.statusCode} - ${response.body}";
+              _isLoading = false;
+            });
+          }
+        }
+      } catch (e) {
+        print('Error fetching suggestion: $e');
+        if (mounted) {
+          setState(() {
+            _suggestion = "Error fetching suggestion: $e";
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      print('User ID not found or empty');
+      if (mounted) {
+        setState(() {
+          _suggestion = "Error: User ID not found";
+          _isLoading = false;
+        });
+      }
+    }
+  } catch (e) {
+    print('General error in fetchPredictionAndSuggestion: $e');
+    if (mounted) {
       setState(() {
-        _suggestion = "An error occurred:(";
+        _suggestion = "An error occurred: $e";
+        _isLoading = false;
       });
     }
+  }
+}
+
+  void _startPeriodicFetching() {
+    _timer?.cancel();
+    
+    fetchPredictionAndSuggestion();
+    
+    _timer = Timer.periodic(Duration(minutes: 2), (timer) {
+      fetchPredictionAndSuggestion();
+    });
   }
 
   @override
   void initState() {
     super.initState();
+    _startPeriodicFetching();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Widget build(BuildContext context) {
