@@ -25,88 +25,95 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _lastUpdated = DateTime.now();
 
   void fetchPredictionAndSuggestion() async {
-  if (mounted) {
-    setState(() {
-      _isLoading = true;
-    });
-  }
-  try {
-    try {
-      final prediction = await apiService.fetchPrediction();
-      print('Prediction: ${prediction['prediction']}');
-      print('Risk Probability: ${prediction['risk_probability']}');
-
-      if (mounted) {
-        setState(() {
-          _prediction = prediction['prediction'];
-          _riskProbability = prediction['risk_probability'];
-          _lastUpdated = DateTime.now();
-        });
-      }
-    } catch (e) {
-      print('Error fetching prediction: $e');
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('current_user_id');
-    print('User ID from SharedPreferences: $userId');
-
-    if (userId != null && userId.isNotEmpty) {
+    try {
       try {
-        final response = await apiService.fetchSuggestion(userId);
-        print('Suggestion API response status: ${response.statusCode}');
-        print('Suggestion API response body: ${response.body}');
+        final prediction = await apiService.fetchPrediction();
+        print('Prediction: ${prediction['prediction']}');
+        print('Risk Probability: ${prediction['risk_probability']}');
 
-        if (response.statusCode == 200) {
-          if (mounted) {
-            setState(() {
-              _suggestion = json.decode(response.body)['suggestion'];
-              _isLoading = false;
-            });
+        if (mounted) {
+          setState(() {
+            _prediction = (prediction['prediction'] is double)
+                ? (prediction['prediction'] as double).toInt()
+                : prediction['prediction'];
+            _riskProbability = (prediction['risk_probability'] is int)
+                ? (prediction['risk_probability'] as int).toDouble()
+                : prediction['risk_probability'];
+            _lastUpdated = DateTime.now();
+          });
+          print(
+              'Updated UI state: prediction=${_prediction}, risk=${_riskProbability}');
+        }
+      } catch (e) {
+        print('Error fetching prediction: $e');
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('current_user_id');
+      print('User ID from SharedPreferences: $userId');
+
+      if (userId != null && userId.isNotEmpty) {
+        try {
+          final response = await apiService.fetchSuggestion(userId);
+          print('Suggestion API response status: ${response.statusCode}');
+          print('Suggestion API response body: ${response.body}');
+
+          if (response.statusCode == 200) {
+            if (mounted) {
+              setState(() {
+                _suggestion = json.decode(response.body)['suggestion'];
+                _isLoading = false;
+              });
+            }
+          } else {
+            print('Error response from suggestion API: ${response.body}');
+            if (mounted) {
+              setState(() {
+                _suggestion =
+                    "Error: ${response.statusCode} - ${response.body}";
+                _isLoading = false;
+              });
+            }
           }
-        } else {
-          print('Error response from suggestion API: ${response.body}');
+        } catch (e) {
+          print('Error fetching suggestion: $e');
           if (mounted) {
             setState(() {
-              _suggestion = "Error: ${response.statusCode} - ${response.body}";
+              _suggestion = "Error fetching suggestion: $e";
               _isLoading = false;
             });
           }
         }
-      } catch (e) {
-        print('Error fetching suggestion: $e');
+      } else {
+        print('User ID not found or empty');
         if (mounted) {
           setState(() {
-            _suggestion = "Error fetching suggestion: $e";
+            _suggestion = "Error: User ID not found";
             _isLoading = false;
           });
         }
       }
-    } else {
-      print('User ID not found or empty');
+    } catch (e) {
+      print('General error in fetchPredictionAndSuggestion: $e');
       if (mounted) {
         setState(() {
-          _suggestion = "Error: User ID not found";
+          _suggestion = "An error occurred: $e";
           _isLoading = false;
         });
       }
     }
-  } catch (e) {
-    print('General error in fetchPredictionAndSuggestion: $e');
-    if (mounted) {
-      setState(() {
-        _suggestion = "An error occurred: $e";
-        _isLoading = false;
-      });
-    }
   }
-}
 
   void _startPeriodicFetching() {
     _timer?.cancel();
-    
+
     fetchPredictionAndSuggestion();
-    
+
     _timer = Timer.periodic(Duration(minutes: 2), (timer) {
       fetchPredictionAndSuggestion();
     });
@@ -226,18 +233,120 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                             borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
-                          height: 80,
-                          child: Text(
-                            _suggestion.isNotEmpty
-                                ? _suggestion
-                                : 'Fetching suggestion.....',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF1D1B4B),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    _getRiskIcon(),
+                                    color: _getRiskColor(),
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    _prediction == 0
+                                        ? 'Healthy'
+                                        : 'Heart Disease - ${_getRiskLevel()}',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: _getRiskColor(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              SizedBox(height: 12),
+
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _prediction == 0
+                                        ? 'Health Status:'
+                                        : 'Risk of Heart Disease:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF1D1B4B),
+                                    ),
+                                  ),
+                                  SizedBox(height: 6),
+                                  Stack(
+                                    children: [
+                                      Container(
+                                        height: 10,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withOpacity(0.3),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                      ),
+                                      Container(
+                                        height: 10,
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                0.8 *
+                                                (_prediction == 0
+                                                    ? 0.05
+                                                    : _riskProbability),
+                                        decoration: BoxDecoration(
+                                          color: _getRiskColor(),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    _prediction == 0
+                                        ? 'Healthy'
+                                        : '${(_riskProbability * 100).toStringAsFixed(1)}%',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1D1B4B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              SizedBox(height: 16),
+
+                              GestureDetector(
+                                onTap: () => _showSuggestionDialog(),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.tips_and_updates,
+                                      size: 18,
+                                      color: Color(0xFF8871E5),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'View Suggestions',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF1D1B4B),
+                                        fontWeight: FontWeight.w500,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -328,6 +437,85 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
+    );
+  }
+
+  IconData _getRiskIcon() {
+    if (_prediction == 0) {
+      return Icons.check_circle;
+    } else if (_riskProbability < 0.3) {
+      return Icons.info_outline;
+    } else if (_riskProbability < 0.6) {
+      return Icons.warning;
+    } else {
+      return Icons.error;
+    }
+  }
+
+  Color _getRiskColor() {
+    if (_prediction == 0) {
+      return Colors.green;
+    } else if (_riskProbability < 0.3) {
+      return Colors.blue;
+    } else if (_riskProbability < 0.6) {
+      return Colors.orange;
+    } else {
+      return Colors.red;
+    }
+  }
+
+  String _getRiskLevel() {
+    print('Getting risk level for probability: $_riskProbability');
+    if (_prediction == 0) {
+      return 'Healthy';
+    } else if (_riskProbability < 0.3) {
+      return 'Low Risk';
+    } else if (_riskProbability < 0.6) {
+      return 'Medium Risk';
+    } else {
+      return 'High Risk';
+    }
+  }
+
+  void _showSuggestionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.health_and_safety, color: Color(0xFF1D1B4B)),
+              SizedBox(width: 8),
+              Text('Health Suggestions'),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _suggestion.isNotEmpty
+                      ? Text(_suggestion)
+                      : Text('Fetching suggestions...'),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        );
+      },
     );
   }
 }

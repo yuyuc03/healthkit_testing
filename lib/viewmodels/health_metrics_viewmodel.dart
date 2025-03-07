@@ -41,18 +41,18 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     try {
       _isLoading = true;
       notifyListeners();
-      
+
       await _initializeUserId();
       await _loadInitialData();
-      
+
       if (_userId.isNotEmpty) {
         await initializeHealth();
       }
-      
+
       _isInitialized = true;
     } catch (e) {
       print('Error during initialization: $e');
@@ -155,7 +155,7 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
       if (_userId.isEmpty) {
         await _initializeUserId();
-        
+
         if (_userId.isEmpty) {
           print('Cannot initialize health: No user ID found');
           return;
@@ -200,20 +200,21 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
       if (_userId.isEmpty) {
         await _initializeUserId();
-        
+
         if (_userId.isEmpty) {
           print('Cannot refresh data: No user ID found');
           return;
         }
       }
 
-      _initializeDefaultMetrics();
       final authorized = await _healthService.requestAuthorization();
       if (authorized) {
         final fetchedData = await _healthService.fetchHealthData(
             _userId, _userProfileProvider.userProfile);
 
         if (fetchedData.isNotEmpty) {
+          print(
+              'Fetched ${fetchedData.length} new health metrics from HealthKit');
           await _databaseService.insertHealthMetrics(
               fetchedData, _userId, _userProfileProvider.userProfile);
 
@@ -224,6 +225,8 @@ class HealthMetricsViewModel extends ChangeNotifier {
               _metrics[index] = fetchedMetric;
             }
           }
+        } else {
+          print('No new health data found in HealthKit');
         }
       }
     } catch (e) {

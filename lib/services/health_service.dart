@@ -72,7 +72,7 @@ class HealthService {
       }
 
       final now = DateTime.now();
-      final startTime = now.subtract(const Duration(days: 1));
+      final startTime = now.subtract(const Duration(days: 7));
       List<HealthMetric> healthMetrics = [];
 
       List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(
