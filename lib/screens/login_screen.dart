@@ -51,7 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('current_user_id', userId);
-          print('Stored user ID in preferences: $userId');
 
           final UserProfile = await getUserProfile(userId);
 

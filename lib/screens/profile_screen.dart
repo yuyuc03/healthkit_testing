@@ -21,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Section
             Container(
               padding:
                   EdgeInsets.only(top: 40, left: 16, right: 16, bottom: 24),

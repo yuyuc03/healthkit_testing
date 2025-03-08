@@ -7,9 +7,15 @@ import 'package:provider/provider.dart';
 import 'package:healthkit_integration_testing/providers/healthkit_provider.dart';
 import 'services/database_service.dart';
 import './services/health_service.dart';
+import './services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final notificationService = NotificationService();
+  await notificationService.init();
+
+  await notificationService.requestIOSPermissions();
 
   final dbService = DatabaseService();
   try {
@@ -21,13 +27,21 @@ void main() async {
 
   final healthService = HealthService();
 
-  runApp(MyApp(healthService: healthService));
+  runApp(MyApp(
+    healthService: healthService,
+    notificationService: notificationService,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final HealthService healthService;
+  final NotificationService notificationService;
 
-  const MyApp({Key? key, required this.healthService}) : super(key: key);
+  const MyApp({
+    Key? key, 
+    required this.healthService,
+    required this.notificationService,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +56,7 @@ class MyApp extends StatelessWidget {
           update: (context, userProfileProvider, previous) =>
               previous ?? HealthMetricsViewModel(userProfileProvider),
         ),
+        Provider.value(value: notificationService),
       ],
       child: MaterialApp(
         title: 'Health App',

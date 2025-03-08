@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:healthkit_integration_testing/services/api_service.dart';
+import 'package:healthkit_integration_testing/services/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../viewmodels/health_metrics_viewmodel.dart';
@@ -36,18 +37,35 @@ class _HomeScreenState extends State<HomeScreen> {
         print('Prediction: ${prediction['prediction']}');
         print('Risk Probability: ${prediction['risk_probability']}');
 
+        int predictionValue = (prediction['prediction'] is double)
+            ? (prediction['prediction'] as double).toInt()
+            : prediction['prediction'];
+
+        double riskProbability = (prediction['risk_probability'] is int)
+            ? (prediction['risk_probability'] as int).toDouble()
+            : prediction['risk_probability'];
+
         if (mounted) {
           setState(() {
-            _prediction = (prediction['prediction'] is double)
-                ? (prediction['prediction'] as double).toInt()
-                : prediction['prediction'];
-            _riskProbability = (prediction['risk_probability'] is int)
-                ? (prediction['risk_probability'] as int).toDouble()
-                : prediction['risk_probability'];
+            _prediction = predictionValue;
+            _riskProbability = riskProbability;
             _lastUpdated = DateTime.now();
           });
-          print(
-              'Updated UI state: prediction=${_prediction}, risk=${_riskProbability}');
+        }
+
+        if (predictionValue == 1) {
+          final notificationService =
+              Provider.of<NotificationService>(context, listen: false);
+
+          final bool? permissionGranted =
+              await notificationService.requestIOSPermissions();
+
+          if (permissionGranted == true) {
+            await notificationService.showHeartDiseaseWarningNotification();
+            print('Heart disease risk notification sent');
+          } else {
+            print('Notification permission not granted');
+          }
         }
       } catch (e) {
         print('Error fetching prediction: $e');
@@ -264,9 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                               ),
-
                               SizedBox(height: 12),
-
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -320,9 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                               ),
-
                               SizedBox(height: 16),
-
                               GestureDetector(
                                 onTap: () => _showSuggestionDialog(),
                                 child: Row(
