@@ -47,13 +47,18 @@ class _LoginScreenState extends State<LoginScreen> {
             await verifyUserCredentials(email, password);
 
         if (isAuthenticated) {
-          final userId = await getUserIdFromLogin(email);
+          final userData = await getUserDataFromLogin(email);
+          final userId = userData['userId'];
+          final fullName = userData['fullName'];
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('current_user_id', userId);
+          await prefs.setString('user_full_name', fullName);
+
+          print('Stored user ID in preferences: $userId');
+          print('Stored user full name in preferences: $fullName');
 
           final UserProfile = await getUserProfile(userId);
-
           widget.healthService.startPeriodSync(userId, UserProfile);
 
           Navigator.pushReplacement(
@@ -129,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<String> getUserIdFromLogin(String email) async {
+  Future<Map<String, dynamic>> getUserDataFromLogin(String email) async {
     mongo.Db? db;
     try {
       final String connectionString =
@@ -140,13 +145,16 @@ class _LoginScreenState extends State<LoginScreen> {
       final userCollection = db.collection('users');
       final user = await userCollection.findOne(mongo.where.eq('email', email));
 
-      if (user != null && user['_id'] != null) {
-        return user['_id'].toString();
+      if (user != null) {
+        return {
+          'userId': user['_id'].toString(),
+          'fullName': user['fullName'] ?? 'User'
+        };
       }
-      throw Exception('User ID not found');
+      throw Exception('User data not found');
     } catch (e) {
-      print('Error getting user ID: $e');
-      throw Exception('Cannot get user ID: $e');
+      print('Error getting user data: $e');
+      throw Exception('Cannot get user data: $e');
     } finally {
       if (db != null && db.isConnected) {
         await db.close();

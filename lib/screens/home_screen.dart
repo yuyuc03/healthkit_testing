@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _riskProbability = 0.0;
   int _prediction = 0;
   DateTime _lastUpdated = DateTime.now();
+  String _fullName = 'User';
 
   void fetchPredictionAndSuggestion() async {
     if (mounted) {
@@ -141,12 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _startPeriodicFetching();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+    _loadUserName();
   }
 
   Widget build(BuildContext context) {
@@ -216,9 +212,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 12),
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Text(
-                              'Hello, Yuyu!',
+                              'Hello, $_fullName!',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
@@ -452,6 +448,27 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final fullName = prefs.getString('user_full_name') ?? 'User';
+
+      if (mounted) {
+        setState(() {
+          _fullName = fullName;
+        });
+      }
+    } catch (e) {
+      print('Error loading user name: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   IconData _getRiskIcon() {

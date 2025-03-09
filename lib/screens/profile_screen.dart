@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:healthkit_integration_testing/screens/login_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import '../providers/healthkit_provider.dart';
 import './profile_edit_screen.dart';
 import './privacy_policy_screen.dart';
@@ -12,6 +14,71 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  String _fullName = 'User';
+  String _email = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('current_user_id') ?? '';
+
+      if (userId.isEmpty) {
+        print('We did not found an user ID when loading profile data');
+        return;
+      }
+
+      final userData = await _fetchUserFromDatabase(userId);
+
+      if (userData != null) {
+        setState(() {
+          _fullName = userData['fullName'] ?? 'User';
+          _email = userData['email'] ?? '';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchUserFromDatabase(String userId) async {
+    mongo.Db? db;
+    try {
+      final String connectionString =
+          'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
+      db = await mongo.Db.create(connectionString);
+      await db.open();
+
+      final userCollection = db.collection('users');
+      final userData =
+          await userCollection.findOne(mongo.where.eq('_id', userId));
+
+      return userData;
+    } catch (e) {
+      print('Error fetching user from database: $e');
+      return null;
+    } finally {
+      if (db != null && db.isConnected) {
+        await db.close();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final healthKitProvider = Provider.of<HealthKitProvider>(context);
@@ -61,16 +128,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Hello, Yuyu!',
+                    'Hello, $_fullName!',
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 4),
-                  Text('yuyu123456@gmail.com',
+                  Text(_email,
                       style: TextStyle(fontSize: 16, color: Colors.grey[600])),
                 ],
               ),
             ),
-
             Container(
               color: Colors.white,
               child: Column(
@@ -96,8 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              LifestyleAndCulturalInfo()),
+                          builder: (context) => LifestyleAndCulturalInfo()),
                     ),
                   ),
                   Divider(),
