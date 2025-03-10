@@ -26,24 +26,26 @@ class HealthKitProvider with ChangeNotifier {
 
       _healthKitConnected = savedStatus;
 
-      Health health = Health();
-      bool isAuthorized = await health.hasPermissions([
-            HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-            HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-            HealthDataType.BLOOD_GLUCOSE,
-            HealthDataType.DIETARY_CHOLESTEROL,
-            HealthDataType.BLOOD_OXYGEN,
-            HealthDataType.RESPIRATORY_RATE,
-            HealthDataType.HEART_RATE,
-            HealthDataType.ACTIVE_ENERGY_BURNED,
-            HealthDataType.EXERCISE_TIME,
-            HealthDataType.STEPS,
-          ]) ??
-          false;
+      if (savedStatus) {
+        Health health = Health();
+        bool isAuthorized = await health.hasPermissions([
+              HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+              HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+              HealthDataType.BLOOD_GLUCOSE,
+              HealthDataType.DIETARY_CHOLESTEROL,
+              HealthDataType.BLOOD_OXYGEN,
+              HealthDataType.RESPIRATORY_RATE,
+              HealthDataType.HEART_RATE,
+              HealthDataType.ACTIVE_ENERGY_BURNED,
+              HealthDataType.EXERCISE_TIME,
+              HealthDataType.STEPS,
+            ]) ??
+            false;
 
-      if (isAuthorized != savedStatus) {
-        _healthKitConnected = isAuthorized;
-        await prefs.setBool(healthKitKey, isAuthorized);
+        if (!isAuthorized) {
+          _healthKitConnected = false;
+          await prefs.setBool(healthKitKey, false);
+        }
       }
     } catch (e) {
       print("Error initializing HealthKit status: $e");
@@ -84,6 +86,28 @@ class HealthKitProvider with ChangeNotifier {
       }
     } catch (e) {
       print("Error connecting to HealthKit: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> disconnectHealthKit() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _healthKitConnected = false;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(healthKitKey, false);
+
+      healthService.stopPeriodicSync();
+
+      print('HealthKit disconnected successfully');
+    } catch (e) {
+      print("Error disconnecting from HealthKit: $e");
+      throw e; 
     } finally {
       _isLoading = false;
       notifyListeners();

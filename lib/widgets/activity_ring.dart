@@ -69,7 +69,7 @@ class HealthRing extends StatelessWidget {
       case "Exercise":
         return "MIN";
       case "Step":
-        return "HRS";
+        return "";
       default:
         return "";
     }
@@ -90,39 +90,60 @@ class HealthRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 3;
+    
+    final innerRadius = size.width / 4.4; 
+    final middleRadius = size.width / 3.3; 
+    final outerRadius = size.width / 2.7;  
+    
+    final strokeWidth = 18.0; 
+    
 
-    final backgroundPaint = Paint()
-      ..color = Colors.grey.shade300
+    final ringSpacing = 10.0;
+    
+
+    final innerRadiusWithSpacing = innerRadius;
+    final middleRadiusWithSpacing = middleRadius + ringSpacing;
+    final outerRadiusWithSpacing = outerRadius + (ringSpacing * 2);
+
+    final caloriesBackgroundPaint = Paint()
+      ..color = Colors.pink.withOpacity(0.2)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 15;
+      ..strokeWidth = strokeWidth;
+
+    final exerciseBackgroundPaint = Paint()
+      ..color = Colors.green.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    final stepBackgroundPaint = Paint()
+      ..color = Colors.blue.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
 
     final caloriesPaint = Paint()
       ..color = Colors.pink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 15
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
     final exercisePaint = Paint()
       ..color = Colors.green
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 15
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    final standPaint = Paint()
+    final stepPaint = Paint()
       ..color = Colors.blue
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 15
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    
-    canvas.drawCircle(center, radius + 20, backgroundPaint);
-    canvas.drawCircle(center, radius + 10, backgroundPaint);
-    canvas.drawCircle(center, radius, backgroundPaint);
+    canvas.drawCircle(center, outerRadiusWithSpacing, caloriesBackgroundPaint);
+    canvas.drawCircle(center, middleRadiusWithSpacing, exerciseBackgroundPaint);
+    canvas.drawCircle(center, innerRadiusWithSpacing, stepBackgroundPaint);
 
-    
     canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius + 20),
+      Rect.fromCircle(center: center, radius: outerRadiusWithSpacing),
       -1.5 * 3.14,
       caloriesProgress * 2 * 3.14,
       false,
@@ -130,7 +151,7 @@ class HealthRingPainter extends CustomPainter {
     );
 
     canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius + 10),
+      Rect.fromCircle(center: center, radius: middleRadiusWithSpacing),
       -1.5 * 3.14,
       exerciseProgress * 2 * 3.14,
       false,
@@ -138,11 +159,11 @@ class HealthRingPainter extends CustomPainter {
     );
 
     canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
+      Rect.fromCircle(center: center, radius: innerRadiusWithSpacing),
       -1.5 * 3.14,
       stepProgress * 2 * 3.14,
       false,
-      standPaint,
+      stepPaint,
     );
   }
 

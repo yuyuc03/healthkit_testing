@@ -26,9 +26,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      setState(() {
-        _isLoading = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
 
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('current_user_id') ?? '';
@@ -180,22 +182,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (value) {
                               await healthKitProvider.connectHealthKit();
                             } else {
-                              showDialog(
-                                  context: context,
-                                  builder: (context) =>
-                                      AlertDialog(
-                                          title:
-                                              Text("Disconnect from HealthKit"),
-                                          content: Text(
-                                              "To disconnect from HealthKit, go to system settings."),
-                                          actions: [
-                                            TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context),
-                                                child: Text("OK"))
-                                          ]));
+                              try {
+                                final bool shouldDisconnect = await showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title:
+                                            Text("Disconnect from HealthKit"),
+                                        content: Text(
+                                            "Are you sure you want to disconnect from HealthKit? Your health data will no longer sync."),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text("Cancel"),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: Text(
+                                              "Disconnect",
+                                              style:
+                                                  TextStyle(color: Colors.red),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ) ??
+                                    false;
+
+                                if (shouldDisconnect) {
+                                  await healthKitProvider.disconnectHealthKit();
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Successfully disconnected from HealthKit'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Failed to disconnect from HealthKit: $e'),
+                                    backgroundColor: Colors.red,
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
                             }
-                          }),
+                          },
+                        ),
                   Divider(),
                   _buildSectionHeader('Notifications'),
                   SwitchListTile(

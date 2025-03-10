@@ -8,9 +8,18 @@ import os
 import numpy as np
 import certifi
 from openai import OpenAI
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 client = AsyncIOMotorClient(
     "mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics",
@@ -154,28 +163,33 @@ async def generate_suggestion(request: GPTRequest):
     if not user_data:
         raise HTTPException(status_code=404, detail="User' extra data not found")
         
-    prompt = f"""You are a highly experienced health advisor AI. Based on the following patient information, provide actionable recommendations.
-        Users' Information:
-        - Age: {prediction_data['age']}
-        - Gender: {'Male' if prediction_data['gender'] == 1 else 'Female'}
-        - Height: {prediction_data['height']} cm
-        - Weight: {prediction_data['weight']} kg
-        - BMI: {prediction_data['bmi']}
-        - Blood Pressure: {prediction_data['ap_hi']}/{prediction_data['ap_lo']} mmHg
-        - Cholesterol Level: {prediction_data['cholesterol']}
-        - Glucose Level: {prediction_data['gluc']}
-        - Smoking Habit: {'Yes' if prediction_data['smoke'] == 1 else 'No'}
-        - Alcohol Intake: {'Yes' if prediction_data['alco'] == 1 else 'No'}
-        - Activity Level: {'Active' if prediction_data['active'] == 1 else 'Inactive'}
-        - Ethnicity: {user_data['ethnicity']}
-        - Country of Origin: {user_data['country_of_origin']}
-       - Dietary Habits: {user_data['dietary_habits']}
-       - Current Medications: {user_data['current_medications']}
+    prompt = f"""You are a supportive health coach providing personalized advice. Based on this health profile:
+            - Age: {prediction_data['age']}
+            - Gender: {'Male' if prediction_data['gender'] == 1 else 'Female'}
+            - Height: {prediction_data['height']} cm
+            - Weight: {prediction_data['weight']} kg
+            - BMI: {prediction_data['bmi']}
+            - Blood Pressure: {prediction_data['ap_hi']}/{prediction_data['ap_lo']} mmHg
+            - Cholesterol: {prediction_data['cholesterol']}
+            - Glucose: {prediction_data['gluc']}
+            - Smoking: {'Yes' if prediction_data['smoke'] == 1 else 'No'}
+            - Alcohol: {'Yes' if prediction_data['alco'] == 1 else 'No'}
+            - Activity: {'Active' if prediction_data['active'] == 1 else 'Inactive'}
+            - Ethnicity: {user_data['ethnicity']}
+            - Origin: {user_data['country_of_origin']}
+            - Diet: {user_data['dietary_habits']}
+            - Medications: {user_data['current_medications']}
+            - Specific Cultural Identity: {user_data['cultural_identity']}
 
-       Instructions:
-       Provide three specific lifestyle recommendations tailored to this patient's cultural background.
-       Format your response as a list of recommendations with explanations.
-       """
+            Provide 3 specific, actionable health tips in a friendly tone. Each tip should:
+            1. Be 1-2 sentences only
+            2. Focus on one key health improvement
+            3. Be culturally appropriate
+            4. Consider their current health metrics
+            5. Be practical for daily implementation
+
+            Format as a brief intro followed by 3 numbered tips. Total response should be under 150 words.
+        """
         
     try:
         response = openai_client.chat.completions.create(

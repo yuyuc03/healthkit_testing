@@ -25,17 +25,33 @@ class HealthService {
     HealthDataType.STEPS,
   ];
 
-  Future<void> initialize() async {
+  Future<bool> initialize() async {
     if (!_isInitialized) {
-      await _databaseService.initialize();
-      _isInitialized = true;
+      try {
+        await _databaseService.initialize();
+
+        bool authorized = await health.requestAuthorization(types);
+        if (!authorized) {
+          print("Failed to get HealthKit authorization during initialization");
+          return false;
+        }
+
+        _isInitialized = true;
+        return true;
+      } catch (e) {
+        print("Initialization error: $e");
+        _isInitialized = false;
+        return false;
+      }
     }
+    return _isInitialized;
   }
 
   void startPeriodSync(String userId, UserProfile? userProfile,
       {Duration interval = const Duration(minutes: 60)}) {
     _currentUserId = userId;
     _currentUserProfile = userProfile;
+
     _syncTimer = Timer.periodic(interval, (timer) {
       _performSync();
     });
@@ -71,8 +87,14 @@ class HealthService {
         await initialize();
       }
 
+      bool authorized = await health.requestAuthorization(types);
+      if (!authorized) {
+        print("HealthKit authorization failed");
+        return [];
+      }
+
       final now = DateTime.now();
-      final startTime = now.subtract(const Duration(days: 7));
+      final startTime = now.subtract(const Duration(minutes: 5));
       List<HealthMetric> healthMetrics = [];
 
       List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(

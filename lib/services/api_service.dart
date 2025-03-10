@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  final String baseUrl = 'http://localhost:8000';
+  final String baseUrl = 'http://192.168.0.46:8000';
 
   Future<Map<String, dynamic>> fetchPrediction() async {
     final String apiUrl = '$baseUrl/predict/';

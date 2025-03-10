@@ -77,13 +77,15 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Profile'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.check),
-            onPressed: _saveProfile,
-          ),
-        ],
+        title: Text(
+          'Edit Profile',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.deepPurple,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -116,6 +118,7 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
                             _gender = value as int;
                           });
                         },
+                        activeColor: Colors.deepPurple,
                       ),
                       Text('Male'),
                       SizedBox(width: 16),
@@ -127,6 +130,7 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
                             _gender = value as int;
                           });
                         },
+                        activeColor: Colors.deepPurple,
                       ),
                       Text('Female'),
                     ],
@@ -187,10 +191,12 @@ class _UserProfileEditScreenState extends State<ProfileEditScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _saveProfile,
-                      child: Text('Save Profile'),
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
                       ),
+                      child: Text('Save Profile'),
                     ),
                   ),
                 ],

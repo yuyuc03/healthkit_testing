@@ -4,14 +4,14 @@
 <dict>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>We need permission to save health data</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>We need access to health data to track your vitals</string>
+	<string>We need access to your health data to provide personalized health insights and predictions</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>We need to save health information to provide you with accurate tracking</string>
 	<key>UIBackgroundModes</key>
 	<array>
-    	<string>fetch</string>
-    	<string>remote-notification</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

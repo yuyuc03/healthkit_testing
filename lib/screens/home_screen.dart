@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             MediaQuery.of(context).size.width *
                                                 0.8 *
                                                 (_prediction == 0
-                                                    ? 0.05
+                                                    ? 1.0
                                                     : _riskProbability),
                                         decoration: BoxDecoration(
                                           color: _getRiskColor(),
@@ -341,16 +341,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Icon(
                                       Icons.tips_and_updates,
                                       size: 18,
-                                      color: Color(0xFF8871E5),
+                                      color: Colors.deepPurple,
                                     ),
                                     SizedBox(width: 4),
                                     Text(
                                       'View Suggestions',
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: Color(0xFF1D1B4B),
+                                        color: Colors.deepPurple,
                                         fontWeight: FontWeight.w500,
-                                        decoration: TextDecoration.underline,
                                       ),
                                     ),
                                   ],
@@ -515,7 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.health_and_safety, color: Color(0xFF1D1B4B)),
+              Icon(Icons.health_and_safety, color: Colors.deepPurple),
               SizedBox(width: 8),
               Text('Health Suggestions'),
             ],
