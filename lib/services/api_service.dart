@@ -2,8 +2,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  final String baseUrl = const String.fromEnvironment('API_URL', defaultValue: 'http://192.168.0.46:8000');
-
+  final String baseUrl = 'https://smartcare-9a89d63cd2f1.herokuapp.com';
+  
   Future<Map<String, dynamic>> fetchPrediction() async {
     final String apiUrl = '$baseUrl/predict/';
 

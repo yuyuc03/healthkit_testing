@@ -60,7 +60,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   Future<void> _getAIResponse(String userMessage) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.0.46:8000/chat/'),
+        Uri.parse('https://smartcare-9a89d63cd2f1.herokuapp.com/chat/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': _userId,

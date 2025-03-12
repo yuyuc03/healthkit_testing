@@ -294,7 +294,7 @@ async def chat_with_ai(request: Request):
             
             The user asks: {message}
             
-            Provide a helpful, accurate response based on medical knowledge. Keep your answer concise.
+            Provide a helpful, accurate response based on medical knowledge. Keep your answer concise and don't always give the same response.
             """
         
         response = openai_client.chat.completions.create(
