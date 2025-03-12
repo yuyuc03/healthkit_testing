@@ -138,11 +138,6 @@ class UserProfileProvider with ChangeNotifier {
         mlModelData['ap_lo'] = _latestHealthMetrics!['ap_lo'] ?? 80.0;
         mlModelData['cholesterol'] = _latestHealthMetrics!['cholesterol'] ?? 1;
         mlModelData['gluc'] = _latestHealthMetrics!['gluc'] ?? 1;
-      } else {
-        mlModelData['ap_hi'] = 120.0;
-        mlModelData['ap_lo'] = 80.0;
-        mlModelData['cholesterol'] = 1;
-        mlModelData['gluc'] = 1;
       }
 
       print("Final ML model data to save: $mlModelData");

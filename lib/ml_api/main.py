@@ -216,10 +216,8 @@ async def generate_suggestion(request: GPTRequest):
 @app.post("/update_user_data/")
 async def update_user_data(data: UserProfileUpdate):
     try:
-        # Calculate BMI
         bmi = data.weight / ((data.height / 100) ** 2)
         
-        # Create update document
         update_data = {
             "timestamp": datetime.now().isoformat(),
             "user_id": data.user_id,
@@ -233,7 +231,6 @@ async def update_user_data(data: UserProfileUpdate):
             "active": data.active
         }
         
-        # Update or insert into ml_model_data collection
         result = await ml_model_data_collection.update_one(
             {"user_id": data.user_id},
             {"$set": update_data},
@@ -258,3 +255,69 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+@app.post("/chat/")
+async def chat_with_ai(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        message = data.get("message")
+        
+        if not user_id or not message:
+            raise HTTPException(status_code=422, detail="Missing user_id or message")
+        
+        user_data = await gpt_data_collection.find_one({"user_id": user_id})
+        prediction_data = await prediction_collection.find_one({"user_id": user_id})
+        
+        if not user_data or not prediction_data:
+            prompt = f"You are a health assistant AI. The user asks: {message}"
+        else:
+            prompt = f"""You are a health assistant AI. Here's some context about the user:
+            - Age: {prediction_data['age']}
+            - Gender: {'Male' if prediction_data['gender'] == 1 else 'Female'}
+            - Height: {prediction_data['height']} cm
+            - Weight: {prediction_data['weight']} kg
+            - BMI: {prediction_data['bmi']}
+            - Blood Pressure: {prediction_data['ap_hi']}/{prediction_data['ap_lo']} mmHg
+            - Cholesterol: {prediction_data['cholesterol']}
+            - Glucose: {prediction_data['gluc']}
+            - Smoking: {'Yes' if prediction_data['smoke'] == 1 else 'No'}
+            - Alcohol: {'Yes' if prediction_data['alco'] == 1 else 'No'}
+            - Activity: {'Active' if prediction_data['active'] == 1 else 'Inactive'}
+            - Ethnicity: {user_data['ethnicity']}
+            - Origin: {user_data['country_of_origin']}
+            - Diet: {user_data['dietary_habits']}
+            - Medications: {user_data['current_medications']}
+            - Specific Cultural Identity: {user_data['cultural_identity']}
+            - Health status: {'At risk of heart disease' if prediction_data.get('prediction') == 1 else 'Healthy'}
+            
+            The user asks: {message}
+            
+            Provide a helpful, accurate response based on medical knowledge. Keep your answer concise.
+            """
+        
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful health assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150
+        )
+        
+        ai_response = response.choices[0].message.content.strip()
+        
+        await health_metrics_db.chat_history.insert_one({
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat(),
+            "user_message": message,
+            "ai_response": ai_response
+        })
+        
+        return {"response": ai_response}
+    
+    except Exception as e:
+        print(f"Error in chat endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+

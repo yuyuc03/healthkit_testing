@@ -8,6 +8,7 @@ import '../../widgets/health_metrics_card.dart';
 import '../../widgets/activity_ring.dart';
 import './profile_screen.dart';
 import '../providers/user_profile_provider.dart';
+import 'ai_chat_screen.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -529,6 +530,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   _suggestion.isNotEmpty
                       ? Text(_suggestion)
                       : Text('Fetching suggestions...'),
+                  SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => AIChatScreen()));
+                    },
+                    icon: Icon(Icons.chat, color: Colors.white),
+                    label: Text('Chat with Health Assistant'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
