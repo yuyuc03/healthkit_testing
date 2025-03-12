@@ -21,10 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = AsyncIOMotorClient(
-    "mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics",
-    tlsCAFile=certifi.where()
-)
+mongo_uri = os.environ.get("MONGO_URI", "mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics")
+client = AsyncIOMotorClient(mongo_uri, tlsCAFile=certifi.where())
+
 health_metrics_db = client["test"]
 
 prediction_collection = health_metrics_db["prediction"]
@@ -37,7 +36,8 @@ svm_model = model_data['model']
 scaler = model_data['scaler']
 feature_names = model_data['feature_name']
 
-openai_client = OpenAI(api_key = "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")
+openai_api_key = os.environ.get("OPENAI_API_KEY", "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")
+openai_client = OpenAI(api_key=openai_api_key)
 
 class PredictionInput(BaseModel):
     timestamp: datetime

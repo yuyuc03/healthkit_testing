@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:provider/provider.dart';
 import '../providers/user_profile_provider.dart';
+import '../config/app_config.dart';
+
 
 class LifestyleAndCulturalInfo extends StatefulWidget {
   @override
@@ -42,8 +44,7 @@ class _LifestyleAndCulturalInfoState extends State<LifestyleAndCulturalInfo> {
   }
 
   Future<void> insertGptData() async {
-    final db = await mongo.Db.create(
-        "mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics");
+    final db = await mongo.Db.create(AppConfig.mongoUri);
     try {
       await db.open();
       final collection = db.collection('gpt_data');

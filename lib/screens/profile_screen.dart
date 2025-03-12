@@ -7,6 +7,7 @@ import '../providers/healthkit_provider.dart';
 import './profile_edit_screen.dart';
 import './privacy_policy_screen.dart';
 import 'lifestyle_and_cultural_info.dart';
+import '../config/app_config.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -61,9 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<Map<String, dynamic>?> _fetchUserFromDatabase(String userId) async {
     mongo.Db? db;
     try {
-      final String connectionString =
-          'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
-      db = await mongo.Db.create(connectionString);
+      db = await mongo.Db.create(AppConfig.mongoUri);
       await db.open();
 
       final userCollection = db.collection('users');

@@ -9,6 +9,7 @@ import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import '../screens/home_screen.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import '../config/app_config.dart';
 
 class LoginScreen extends StatefulWidget {
   final HealthService healthService;
@@ -106,9 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<bool> verifyUserCredentials(String email, String password) async {
     mongo.Db? db;
     try {
-      final String connectionString =
-          'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
-      final db = await mongo.Db.create(connectionString);
+      db = await mongo.Db.create(AppConfig.mongoUri);
       await db.open();
 
       final userCollection = db.collection('users');
@@ -137,9 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<Map<String, dynamic>> getUserDataFromLogin(String email) async {
     mongo.Db? db;
     try {
-      final String connectionString =
-          'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
-      db = await mongo.Db.create(connectionString);
+      db = await mongo.Db.create(AppConfig.mongoUri);
       await db.open();
 
       final userCollection = db.collection('users');

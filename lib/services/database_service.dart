@@ -1,20 +1,20 @@
 import 'package:health/health.dart';
 import 'package:healthkit_integration_testing/models/user_profile.dart';
-import 'package:mongo_dart/mongo_dart.dart';
+import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import '../models/health_metric.dart';
+import '../config/app_config.dart';
 
 class DatabaseService {
-  late Db? _db;
-  late DbCollection? _healthCollection;
-  late DbCollection? _mlModelCollection;
-  late DbCollection? _userProfileCollection;
+  late mongo.Db? _db;
+  late mongo.DbCollection? _healthCollection;
+  late mongo.DbCollection? _mlModelCollection;
+  late mongo.DbCollection? _userProfileCollection;
   bool _isInitialized = false;
 
   Future<void> initialize() async {
     if (!_isInitialized) {
       try {
-        _db = await Db.create(
-            'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics');
+        _db = await mongo.Db.create(AppConfig.mongoUri);
         await _db!.open();
         _healthCollection = _db!.collection('health_metrics');
         _mlModelCollection = _db!.collection('ml_model_data');
@@ -41,7 +41,7 @@ class DatabaseService {
     await checkDatabaseStatus();
     try {
       final result =
-          await _userProfileCollection!.findOne(where.eq('user_id', userId));
+          await _userProfileCollection!.findOne(mongo.where.eq('user_id', userId));
       if (result != null) {
         return UserProfile.fromMap(result);
       }
@@ -164,7 +164,7 @@ class DatabaseService {
 
     try {
       await _userProfileCollection!.update(
-          where.eq('user_id', updatedProfile.userId), updatedProfile.toMap(),
+          mongo.where.eq('user_id', updatedProfile.userId), updatedProfile.toMap(),
           upsert: true);
 
       final latestMetrics = await getLatestHealthMetrics(updatedProfile.userId);
@@ -184,7 +184,7 @@ class DatabaseService {
 
     try {
       final results =
-          await _healthCollection!.find(where.eq('user_id', userId)).toList();
+          await _healthCollection!.find(mongo.where.eq('user_id', userId)).toList();
 
       if (results.isEmpty) return [];
 
@@ -243,7 +243,7 @@ class DatabaseService {
 
     try {
       final results = await _mlModelCollection!
-          .find(where.eq('user_id', userId))
+          .find(mongo.where.eq('user_id', userId))
           .take(limit)
           .toList();
       return results;
@@ -258,7 +258,7 @@ class DatabaseService {
 
     try {
       final results =
-          await _mlModelCollection!.find(where.eq('user_id', userId)).toList();
+          await _mlModelCollection!.find(mongo.where.eq('user_id', userId)).toList();
 
       if (results.isEmpty) return null;
 

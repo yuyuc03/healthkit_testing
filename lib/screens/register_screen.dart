@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import '../config/app_config.dart';
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -40,9 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> saveUserToDatabase(
       String userId, String fullName, String email, String password) async {
     try {
-      final String connectionString =
-          'mongodb+srv://yuyucheng2003:2yjbDeyUfi2GF8KI@healthmetrics.z6rit.mongodb.net/?retryWrites=true&w=majority&appName=HealthMetrics';
-      final db = await mongo.Db.create(connectionString);
+      final db = await mongo.Db.create(AppConfig.mongoUri);
       await db.open();
 
       final userCollection = db.collection('users');
