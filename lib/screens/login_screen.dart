@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
           print('Stored user full name in preferences: $fullName');
 
           final UserProfile = await getUserProfile(userId);
-          widget.healthService.startPeriodSync(userId, UserProfile);
+          widget.healthService.startPeriodSync(userId, UserProfile, interval: Duration(seconds: 30));
 
           Navigator.pushReplacement(
             context,

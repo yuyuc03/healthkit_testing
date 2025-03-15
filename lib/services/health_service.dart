@@ -1,16 +1,23 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:healthkit_integration_testing/models/user_profile.dart';
 import '../models/health_metric.dart';
 import '../services/database_service.dart';
 import 'dart:async';
 
-class HealthService {
+typedef OnDataFetchedCallback = void Function(List<HealthMetric> metrics);
+
+class HealthService extends ChangeNotifier {
   final Health health = Health();
   final DatabaseService _databaseService = DatabaseService();
   bool _isInitialized = false;
   Timer? _syncTimer;
   String? _currentUserId;
   UserProfile? _currentUserProfile;
+  
+  // Add a callback field
+  OnDataFetchedCallback? onDataFetched;
 
   final List<HealthDataType> types = [
     HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
@@ -47,14 +54,22 @@ class HealthService {
     return _isInitialized;
   }
 
+  // Modified to accept a callback
   void startPeriodSync(String userId, UserProfile? userProfile,
-      {Duration interval = const Duration(seconds: 30)}) {
+      {Duration interval = const Duration(seconds: 30), OnDataFetchedCallback? callback}) {
     _currentUserId = userId;
     _currentUserProfile = userProfile;
+    onDataFetched = callback;
 
+    // Cancel any existing timer before creating a new one
+    _syncTimer?.cancel();
+    
     _syncTimer = Timer.periodic(interval, (timer) {
       _performSync();
     });
+    
+    // Perform an immediate sync when starting
+    _performSync();
   }
 
   void stopPeriodicSync() {
@@ -62,11 +77,17 @@ class HealthService {
     _syncTimer = null;
     _currentUserId = null;
     _currentUserProfile = null;
+    onDataFetched = null;
   }
 
   Future<void> _performSync() async {
     if (_currentUserId != null) {
-      await fetchHealthData(_currentUserId!, _currentUserProfile);
+      final fetchedData = await fetchHealthData(_currentUserId!, _currentUserProfile);
+      
+      // Call the callback if data was fetched and a callback is registered
+      if (fetchedData.isNotEmpty && onDataFetched != null) {
+        onDataFetched!(fetchedData);
+      }
     }
   }
 
@@ -94,24 +115,34 @@ class HealthService {
       }
 
       final now = DateTime.now();
-      final startTime = now.subtract(const Duration(minutes: 5));
+      // Extend the time range to increase chances of finding data
+      final startTime = now.subtract(const Duration(days: 1));
       List<HealthMetric> healthMetrics = [];
 
+      print('Attempting to fetch health data from ${startTime} to ${now}');
+      
       List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(
         types: types,
         startTime: startTime,
         endTime: now,
       );
+      
+      print('Health points fetched: ${healthPoints.length}');
 
       for (var point in healthPoints) {
         if (point.value is NumericHealthValue) {
-          final metric = HealthMetric(
-            type: point.type,
-            value: (point.value as NumericHealthValue).numericValue.toDouble(),
-            unit: point.unit.toString(),
-            timestamp: point.dateFrom,
-          );
-          healthMetrics.add(metric);
+          final value = (point.value as NumericHealthValue).numericValue.toDouble();
+          // Only add non-zero values to avoid cluttering with empty data
+          if (value > 0) {
+            final metric = HealthMetric(
+              type: point.type,
+              value: value,
+              unit: point.unit.toString(),
+              timestamp: point.dateFrom,
+            );
+            healthMetrics.add(metric);
+            print('Processing health point: ${point.type.name}, value: $value, time: ${point.dateFrom}');
+          }
         }
       }
 
@@ -125,10 +156,84 @@ class HealthService {
           print(
               'Saved: ${metric.type.name} - Value: ${metric.value} ${metric.unit} at ${metric.timestamp}');
         }
+        notifyListeners();
+      } else {
+        print('No health metrics found to save');
       }
       return healthMetrics;
     } catch (e) {
       print("Fetch error: $e");
+      return [];
+    }
+  }
+
+  // Add a method to verify permissions
+  Future<Map<HealthDataType, bool>> verifyPermissions() async {
+    Map<HealthDataType, bool> permissionStatus = {};
+    
+    for (var type in types) {
+      bool? hasPermission = await health.hasPermissions([type]);
+      permissionStatus[type] = hasPermission ?? false;
+      print('Permission for ${type.name}: ${hasPermission ?? false}');
+    }
+    
+    return permissionStatus;
+  }
+
+  // Fetch with extended time range for manual refresh
+  Future<List<HealthMetric>> fetchHealthDataWithExtendedRange(
+      String userId, UserProfile? userProfile) async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+
+      bool authorized = await health.requestAuthorization(types);
+      if (!authorized) {
+        print("HealthKit authorization failed");
+        return [];
+      }
+
+      final now = DateTime.now();
+      // Use a much longer time range for manual refresh
+      final startTime = now.subtract(const Duration(days: 30));
+      List<HealthMetric> healthMetrics = [];
+
+      print('Attempting to fetch health data with extended range from ${startTime} to ${now}');
+      
+      List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(
+        types: types,
+        startTime: startTime,
+        endTime: now,
+      );
+      
+      print('Health points fetched with extended range: ${healthPoints.length}');
+
+      for (var point in healthPoints) {
+        if (point.value is NumericHealthValue) {
+          final value = (point.value as NumericHealthValue).numericValue.toDouble();
+          if (value > 0) {
+            final metric = HealthMetric(
+              type: point.type,
+              value: value,
+              unit: point.unit.toString(),
+              timestamp: point.dateFrom,
+            );
+            healthMetrics.add(metric);
+          }
+        }
+      }
+
+      if (healthMetrics.isNotEmpty) {
+        await _databaseService.insertHealthMetrics(
+            healthMetrics, userId, userProfile);
+        print(
+            'Saved ${healthMetrics.length} health metrics from extended range to MongoDB for user $userId');
+        notifyListeners();
+      }
+      return healthMetrics;
+    } catch (e) {
+      print("Fetch error with extended range: $e");
       return [];
     }
   }
@@ -206,8 +311,10 @@ class HealthService {
     }
   }
 
-  Future<void> dispose() async {
+  @override
+  void dispose() {
     stopPeriodicSync();
-    await _databaseService.close();
+    _databaseService.close();
+    super.dispose();
   }
 }

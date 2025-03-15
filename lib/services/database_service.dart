@@ -40,8 +40,8 @@ class DatabaseService {
   Future<UserProfile?> getUserProfile(String userId) async {
     await checkDatabaseStatus();
     try {
-      final result =
-          await _userProfileCollection!.findOne(mongo.where.eq('user_id', userId));
+      final result = await _userProfileCollection!
+          .findOne(mongo.where.eq('user_id', userId));
       if (result != null) {
         return UserProfile.fromMap(result);
       }
@@ -60,15 +60,26 @@ class DatabaseService {
     try {
       final latestUserProfile = await getUserProfile(userId);
 
-      final timestamp = DateTime.now().toIso8601String();
-      final metricsMap = <String, Map<String, dynamic>>{};
-      final mlMetrics = <String, dynamic>{};
+      final Map<HealthDataType, HealthMetric> latestMetrics = {};
 
       for (var metric in metrics) {
-        metricsMap[metric.type.name] = {
-          'value': metric.value,
-          'unit': metric.unit
-        };
+        final existingMetric = latestMetrics[metric.type];
+        if (existingMetric == null ||
+            metric.timestamp.isAfter(existingMetric.timestamp)) {
+          latestMetrics[metric.type] = metric;
+          print(
+              "Selected latest metric: ${metric.type} - Value: ${metric.value} at ${metric.timestamp}");
+        }
+      }
+
+      final mlMetrics = <String, dynamic>{};
+      DateTime latestTimestamp = DateTime.now();
+
+      // Process only the latest metrics for each type
+      for (var metric in latestMetrics.values) {
+        if (metric.timestamp.isAfter(latestTimestamp)) {
+          latestTimestamp = metric.timestamp;
+        }
 
         switch (metric.type) {
           case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
@@ -102,6 +113,18 @@ class DatabaseService {
         }
       }
 
+      final timestamp = DateTime.now().toIso8601String();
+      final metricsMap = <String, Map<String, dynamic>>{};
+
+      for (var metric in metrics) {
+        metricsMap[metric.type.name] = {
+          'value': metric.value,
+          'unit': metric.unit,
+          'recorded_at': metric.timestamp
+              .toIso8601String() 
+        };
+      }
+
       final healthDocument = {
         'timestamp': timestamp,
         'user_id': userId,
@@ -124,7 +147,7 @@ class DatabaseService {
 
       if (mlMetrics.containsKey('ap_hi') &&
           mlMetrics.containsKey('ap_lo') &&
-          userProfile != null) {
+          latestUserProfile != null) {
         if (!mlMetrics.containsKey('cholesterol')) {
           mlMetrics['cholesterol'] = 1;
           print("Added default cholesterol value");
@@ -135,23 +158,25 @@ class DatabaseService {
         }
 
         final orderedMLData = {
-          'timestamp': timestamp,
+          'timestamp': latestTimestamp
+              .toIso8601String(), 
           'user_id': userId,
-          'age': latestUserProfile?.age?.toDouble() ?? 0.0,
-          'gender': latestUserProfile?.gender ?? 0,
-          'height': latestUserProfile?.height ?? 0.0,
-          'weight': latestUserProfile?.weight ?? 0.0,
-          'bmi': latestUserProfile?.calculateBMI() ?? 0.0,
+          'age': latestUserProfile.age?.toDouble() ?? 0.0,
+          'gender': latestUserProfile.gender ?? 0,
+          'height': latestUserProfile.height ?? 0.0,
+          'weight': latestUserProfile.weight ?? 0.0,
+          'bmi': latestUserProfile.calculateBMI() ?? 0.0,
           'ap_hi': mlMetrics['ap_hi'],
           'ap_lo': mlMetrics['ap_lo'],
           'cholesterol': mlMetrics['cholesterol'],
           'gluc': mlMetrics['gluc'],
-          'smoke': latestUserProfile?.smoke == true ? 1 : 0,
-          'alco': latestUserProfile?.alco == true ? 1 : 0,
-          'active': latestUserProfile?.active == true ? 1 : 0
+          'smoke': latestUserProfile.smoke == true ? 1 : 0,
+          'alco': latestUserProfile.alco == true ? 1 : 0,
+          'active': latestUserProfile.active == true ? 1 : 0
         };
+
         await _mlModelCollection!.insertOne(orderedMLData);
-        print("ML data inserted: $orderedMLData");
+        print("ML data inserted with latest values: $orderedMLData");
       }
     } catch (e) {
       print('Error inserting health metrics: $e');
@@ -164,7 +189,8 @@ class DatabaseService {
 
     try {
       await _userProfileCollection!.update(
-          mongo.where.eq('user_id', updatedProfile.userId), updatedProfile.toMap(),
+          mongo.where.eq('user_id', updatedProfile.userId),
+          updatedProfile.toMap(),
           upsert: true);
 
       final latestMetrics = await getLatestHealthMetrics(updatedProfile.userId);
@@ -183,8 +209,9 @@ class DatabaseService {
     await checkDatabaseStatus();
 
     try {
-      final results =
-          await _healthCollection!.find(mongo.where.eq('user_id', userId)).toList();
+      final results = await _healthCollection!
+          .find(mongo.where.eq('user_id', userId))
+          .toList();
 
       if (results.isEmpty) return [];
 
@@ -257,8 +284,9 @@ class DatabaseService {
     await checkDatabaseStatus();
 
     try {
-      final results =
-          await _mlModelCollection!.find(mongo.where.eq('user_id', userId)).toList();
+      final results = await _mlModelCollection!
+          .find(mongo.where.eq('user_id', userId))
+          .toList();
 
       if (results.isEmpty) return null;
 

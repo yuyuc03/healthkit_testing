@@ -51,6 +51,13 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
       if (_userId.isNotEmpty) {
         await initializeHealth();
+
+        // Set up the callback for automatic updates
+        _healthService
+            .startPeriodSync(_userId, _userProfileProvider.userProfile,
+                callback: (fetchedMetrics) {
+          _updateMetricsFromFetch(fetchedMetrics);
+        });
       }
 
       _isInitialized = true;
@@ -60,6 +67,33 @@ class HealthMetricsViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+// Add a new method to handle updates from the callback
+  void _updateMetricsFromFetch(List<HealthMetric> fetchedMetrics) {
+    if (fetchedMetrics.isEmpty) return;
+
+    print(
+        'Automatically updating UI with ${fetchedMetrics.length} new metrics');
+
+    // Create a map for faster lookups
+    Map<HealthDataType, HealthMetric> updatedMetrics = {};
+
+    // First, add all existing metrics to the map
+    for (var metric in _metrics) {
+      updatedMetrics[metric.type] = metric;
+    }
+
+    // Then update or add new metrics from fetched data
+    for (var fetchedMetric in fetchedMetrics) {
+      updatedMetrics[fetchedMetric.type] = fetchedMetric;
+    }
+
+    // Convert back to list
+    _metrics = updatedMetrics.values.toList();
+
+    // Notify listeners to update the UI
+    notifyListeners();
   }
 
   Future<void> _initializeUserId() async {
@@ -200,7 +234,6 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
       if (_userId.isEmpty) {
         await _initializeUserId();
-
         if (_userId.isEmpty) {
           print('Cannot refresh data: No user ID found');
           return;
@@ -218,13 +251,19 @@ class HealthMetricsViewModel extends ChangeNotifier {
           await _databaseService.insertHealthMetrics(
               fetchedData, _userId, _userProfileProvider.userProfile);
 
-          for (var fetchedMetric in fetchedData) {
-            final index =
-                _metrics.indexWhere((m) => m.type == fetchedMetric.type);
-            if (index != -1) {
-              _metrics[index] = fetchedMetric;
-            }
+          Map<HealthDataType, HealthMetric> updatedMetrics = {};
+
+          for (var metric in _metrics) {
+            updatedMetrics[metric.type] = metric;
           }
+
+          for (var fetchedMetric in fetchedData) {
+            updatedMetrics[fetchedMetric.type] = fetchedMetric;
+          }
+
+          _metrics = updatedMetrics.values.toList();
+
+          notifyListeners();
         } else {
           print('No new health data found in HealthKit');
         }
