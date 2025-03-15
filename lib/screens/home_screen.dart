@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     fetchPredictionAndSuggestion();
 
-    _timer = Timer.periodic(Duration(minutes: 2), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 30), (timer) {
       fetchPredictionAndSuggestion();
     });
   }

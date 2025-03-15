@@ -48,7 +48,7 @@ class HealthService {
   }
 
   void startPeriodSync(String userId, UserProfile? userProfile,
-      {Duration interval = const Duration(minutes: 60)}) {
+      {Duration interval = const Duration(seconds: 30)}) {
     _currentUserId = userId;
     _currentUserProfile = userProfile;
 

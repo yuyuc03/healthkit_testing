@@ -147,49 +147,68 @@ async def predict():
         print(f"Unexpected error in predict endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
+
 @app.post("/generate_suggestion/", response_model = GPTResponse)
 async def generate_suggestion(request: GPTRequest):
     print(f"Received request for user_id: {request.user_id}")
     
-    prediction_data = await prediction_collection.find_one({"user_id": request.user_id})
+    prediction_data = await prediction_collection.find_one({"user_id": request.user_id}, sort=[("timestamp", -1)])
     print(f"Prediction data: {prediction_data}")
 
     if not prediction_data:
         raise HTTPException(status_code = 422, detail = "Prediction data not found for $user_id")
         
 
-    user_data = await gpt_data_collection.find_one({"user_id": request.user_id})
+    user_data = await gpt_data_collection.find_one({"user_id": request.user_id}, sort=[("timestamp", -1)])
 
     if not user_data:
         raise HTTPException(status_code=404, detail="User' extra data not found")
-        
+        user_data = {}
+
     prompt = f"""You are a supportive health coach providing personalized advice. Based on this health profile:
-            - Age: {prediction_data['age']}
-            - Gender: {'Male' if prediction_data['gender'] == 1 else 'Female'}
-            - Height: {prediction_data['height']} cm
-            - Weight: {prediction_data['weight']} kg
-            - BMI: {prediction_data['bmi']}
-            - Blood Pressure: {prediction_data['ap_hi']}/{prediction_data['ap_lo']} mmHg
-            - Cholesterol: {prediction_data['cholesterol']}
-            - Glucose: {prediction_data['gluc']}
-            - Smoking: {'Yes' if prediction_data['smoke'] == 1 else 'No'}
-            - Alcohol: {'Yes' if prediction_data['alco'] == 1 else 'No'}
-            - Activity: {'Active' if prediction_data['active'] == 1 else 'Inactive'}
-            - Ethnicity: {user_data['ethnicity']}
-            - Origin: {user_data['country_of_origin']}
-            - Diet: {user_data['dietary_habits']}
-            - Medications: {user_data['current_medications']}
-            - Specific Cultural Identity: {user_data['cultural_identity']}
-
-            Provide 3 specific, actionable health tips in a friendly tone. Each tip should:
-            1. Be 1-2 sentences only
-            2. Focus on one key health improvement
-            3. Be culturally appropriate
-            4. Consider their current health metrics
-            5. Be practical for daily implementation
-
-            Format as a brief intro followed by 3 numbered tips. Total response should be under 150 words.
+        - Age: {prediction_data['age']}
+        - Gender: {'Male' if prediction_data['gender'] == 1 else 'Female'}
+        - Height: {prediction_data['height']} cm
+        - Weight: {prediction_data['weight']} kg
+        - BMI: {prediction_data['bmi']}
+        - Blood Pressure: {prediction_data['ap_hi']}/{prediction_data['ap_lo']} mmHg
+        - Cholesterol: {prediction_data['cholesterol']}
+        - Glucose: {prediction_data['gluc']}
+        - Smoking: {'Yes' if prediction_data['smoke'] == 1 else 'No'}
+        - Alcohol: {'Yes' if prediction_data['alco'] == 1 else 'No'}
+        - Activity: {'Active' if prediction_data['active'] == 1 else 'Inactive'}
+    """
+    
+    if user_data:
+        prompt += f"""
+        Additional personal information:
+        - Ethnicity: {user_data.get('ethnicity', 'Not specified')}
+        - Country of Origin: {user_data.get('country_of_origin', 'Not specified')}
+        - Religious Identity: {user_data.get('religious_identity', 'Not specified')}
+        - Dietary Habits: {user_data.get('dietary_habits', 'Not specified')}
+        - Current Medications: {user_data.get('current_medications', 'Not specified')}
+        - Cultural Identity: {user_data.get('cultural_identity', 'Not specified')}
+        - Family History of Heart Disease: {'Yes' if user_data.get('family_history', False) else 'No'}
         """
+    
+    heart_disease_risk = prediction_data.get('prediction', 0)
+    risk_probability = prediction_data.get('risk_probability', 0)
+    
+    if heart_disease_risk == 1:
+        risk_level = "high" if risk_probability > 0.6 else "medium" if risk_probability > 0.3 else "low"
+        prompt += f"""
+        This person has a {risk_level} risk of heart disease (probability: {risk_probability:.2f}).
+        Please provide personalized health advice focusing on heart disease prevention.
+        """
+    else:
+        prompt += """
+        Please provide personalized health advice, including some dietary habits and activities to maintain and improve overall health.
+        """
+    
+    prompt += """
+    Keep your response concise (around 150 words). Each suggestion should be 1-2 sentences long and focus on actionable advice.
+    Consider their current health metrics, cultural background, and lifestyle when making recommendations.
+    """
         
     try:
         response = openai_client.chat.completions.create(
