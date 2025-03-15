@@ -54,21 +54,18 @@ class HealthService extends ChangeNotifier {
     return _isInitialized;
   }
 
-  // Modified to accept a callback
   void startPeriodSync(String userId, UserProfile? userProfile,
       {Duration interval = const Duration(seconds: 30), OnDataFetchedCallback? callback}) {
     _currentUserId = userId;
     _currentUserProfile = userProfile;
     onDataFetched = callback;
 
-    // Cancel any existing timer before creating a new one
     _syncTimer?.cancel();
     
     _syncTimer = Timer.periodic(interval, (timer) {
       _performSync();
     });
     
-    // Perform an immediate sync when starting
     _performSync();
   }
 
@@ -84,7 +81,6 @@ class HealthService extends ChangeNotifier {
     if (_currentUserId != null) {
       final fetchedData = await fetchHealthData(_currentUserId!, _currentUserProfile);
       
-      // Call the callback if data was fetched and a callback is registered
       if (fetchedData.isNotEmpty && onDataFetched != null) {
         onDataFetched!(fetchedData);
       }
@@ -115,7 +111,6 @@ class HealthService extends ChangeNotifier {
       }
 
       final now = DateTime.now();
-      // Extend the time range to increase chances of finding data
       final startTime = now.subtract(const Duration(days: 1));
       List<HealthMetric> healthMetrics = [];
 
@@ -132,7 +127,6 @@ class HealthService extends ChangeNotifier {
       for (var point in healthPoints) {
         if (point.value is NumericHealthValue) {
           final value = (point.value as NumericHealthValue).numericValue.toDouble();
-          // Only add non-zero values to avoid cluttering with empty data
           if (value > 0) {
             final metric = HealthMetric(
               type: point.type,
@@ -167,7 +161,6 @@ class HealthService extends ChangeNotifier {
     }
   }
 
-  // Add a method to verify permissions
   Future<Map<HealthDataType, bool>> verifyPermissions() async {
     Map<HealthDataType, bool> permissionStatus = {};
     
@@ -180,7 +173,6 @@ class HealthService extends ChangeNotifier {
     return permissionStatus;
   }
 
-  // Fetch with extended time range for manual refresh
   Future<List<HealthMetric>> fetchHealthDataWithExtendedRange(
       String userId, UserProfile? userProfile) async {
     try {
@@ -195,7 +187,6 @@ class HealthService extends ChangeNotifier {
       }
 
       final now = DateTime.now();
-      // Use a much longer time range for manual refresh
       final startTime = now.subtract(const Duration(days: 30));
       List<HealthMetric> healthMetrics = [];
 

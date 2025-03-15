@@ -52,7 +52,7 @@ class HealthMetricsViewModel extends ChangeNotifier {
       if (_userId.isNotEmpty) {
         await initializeHealth();
 
-        // Set up the callback for automatic updates
+
         _healthService
             .startPeriodSync(_userId, _userProfileProvider.userProfile,
                 callback: (fetchedMetrics) {
@@ -69,30 +69,24 @@ class HealthMetricsViewModel extends ChangeNotifier {
     }
   }
 
-// Add a new method to handle updates from the callback
   void _updateMetricsFromFetch(List<HealthMetric> fetchedMetrics) {
     if (fetchedMetrics.isEmpty) return;
 
     print(
         'Automatically updating UI with ${fetchedMetrics.length} new metrics');
 
-    // Create a map for faster lookups
     Map<HealthDataType, HealthMetric> updatedMetrics = {};
 
-    // First, add all existing metrics to the map
     for (var metric in _metrics) {
       updatedMetrics[metric.type] = metric;
     }
 
-    // Then update or add new metrics from fetched data
     for (var fetchedMetric in fetchedMetrics) {
       updatedMetrics[fetchedMetric.type] = fetchedMetric;
     }
 
-    // Convert back to list
     _metrics = updatedMetrics.values.toList();
 
-    // Notify listeners to update the UI
     notifyListeners();
   }
 
