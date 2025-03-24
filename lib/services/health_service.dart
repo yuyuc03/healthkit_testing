@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:health/health.dart';
 import 'package:healthkit_integration_testing/models/user_profile.dart';
 import '../models/health_metric.dart';
 import '../services/database_service.dart';
 import 'dart:async';
-
-typedef OnDataFetchedCallback = void Function(List<HealthMetric> metrics);
 
 class HealthService extends ChangeNotifier {
   final Health health = Health();
@@ -15,10 +13,8 @@ class HealthService extends ChangeNotifier {
   Timer? _syncTimer;
   String? _currentUserId;
   UserProfile? _currentUserProfile;
-  
-  // Add a callback field
-  OnDataFetchedCallback? onDataFetched;
 
+  // Define all health data types we want to track
   final List<HealthDataType> types = [
     HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
     HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
@@ -37,11 +33,13 @@ class HealthService extends ChangeNotifier {
       try {
         await _databaseService.initialize();
 
-        bool authorized = await health.requestAuthorization(types);
+        bool authorized = await requestHealthPermissions();
         if (!authorized) {
           print("Failed to get HealthKit authorization during initialization");
           return false;
         }
+
+        await setupBackgroundDelivery();
 
         _isInitialized = true;
         return true;
@@ -54,18 +52,60 @@ class HealthService extends ChangeNotifier {
     return _isInitialized;
   }
 
+  Future<bool> requestHealthPermissions() async {
+    try {
+      return await health.requestAuthorization(types,
+          permissions: List.filled(
+            types.length,
+            HealthDataAccess.READ,
+          ));
+    } catch (e) {
+      print("Permission request error: $e");
+      return false;
+    }
+  }
+
+  Future<void> setupBackgroundDelivery() async {
+    try {
+      print("Setting up background delivery with native implementation");
+
+      const platform =
+          MethodChannel('com.example.healthkitIntegrationTesting/background');
+
+      platform.setMethodCallHandler((call) async {
+        if (call.method == 'healthDataUpdated') {
+          print("Received health data update from native code");
+          if (_currentUserId != null) {
+            final metrics = await _performSync();
+
+            notifyListeners();
+          }
+        }
+      });
+
+      final bool result =
+          await platform.invokeMethod('setupHealthKitObservers');
+      print("Background delivery setup completed: $result");
+    } catch (e) {
+      print("Error setting up background delivery: $e");
+    }
+  }
+
   void startPeriodSync(String userId, UserProfile? userProfile,
-      {Duration interval = const Duration(seconds: 30), OnDataFetchedCallback? callback}) {
+      {Duration interval = const Duration(seconds: 30)}) {
     _currentUserId = userId;
     _currentUserProfile = userProfile;
-    onDataFetched = callback;
 
-    _syncTimer?.cancel();
-    
-    _syncTimer = Timer.periodic(interval, (timer) {
-      _performSync();
+    stopPeriodicSync();
+
+    _syncTimer = Timer.periodic(interval, (timer) async {
+      try {
+        await _performSync();
+        print("Periodic sync completed successfully at ${DateTime.now()}");
+      } catch (e) {
+        print("Error during periodic sync: $e");
+      }
     });
-    
     _performSync();
   }
 
@@ -74,25 +114,48 @@ class HealthService extends ChangeNotifier {
     _syncTimer = null;
     _currentUserId = null;
     _currentUserProfile = null;
-    onDataFetched = null;
   }
 
-  Future<void> _performSync() async {
+  Future<List<HealthMetric>> _performSync() async {
+    print("Starting health data sync at ${DateTime.now()}");
+    List<HealthMetric> updatedMetrics = [];
+
     if (_currentUserId != null) {
-      final fetchedData = await fetchHealthData(_currentUserId!, _currentUserProfile);
-      
-      if (fetchedData.isNotEmpty && onDataFetched != null) {
-        onDataFetched!(fetchedData);
+      try {
+        updatedMetrics =
+            await fetchHealthData(_currentUserId!, _currentUserProfile);
+        print("Synced ${updatedMetrics.length} health metrics");
+        for (var metric in updatedMetrics) {
+          print("  - ${metric.type.name}: ${metric.value} ${metric.unit}");
+        }
+      } catch (e) {
+        print("Sync error: $e");
       }
+    } else {
+      print("No user ID available for sync");
     }
+
+    return updatedMetrics;
   }
 
-  Future<bool> requestAuthorization() async {
+  Future<bool> isHealthKitAccessible() async {
     try {
-      await initialize();
-      return await health.requestAuthorization(types);
+      final testTypes = [HealthDataType.STEPS];
+      final now = DateTime.now();
+      final yesterday = now.subtract(Duration(days: 1));
+
+      final authorized = await health.requestAuthorization(testTypes);
+      if (!authorized) return false;
+
+      final data = await health.getHealthDataFromTypes(
+        types: testTypes,
+        startTime: yesterday,
+        endTime: now,
+      );
+
+      return data.isNotEmpty;
     } catch (e) {
-      print("Authorization error: $e");
+      print("HealthKit accessibility check failed: $e");
       return false;
     }
   }
@@ -111,32 +174,76 @@ class HealthService extends ChangeNotifier {
       }
 
       final now = DateTime.now();
-      final startTime = now.subtract(const Duration(days: 1));
+      final startTime = now.subtract(const Duration(hours: 24));
       List<HealthMetric> healthMetrics = [];
 
-      print('Attempting to fetch health data from ${startTime} to ${now}');
-      
       List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(
         types: types,
         startTime: startTime,
         endTime: now,
       );
-      
-      print('Health points fetched: ${healthPoints.length}');
 
+      Map<HealthDataType, List<HealthDataPoint>> groupedData = {};
       for (var point in healthPoints) {
-        if (point.value is NumericHealthValue) {
-          final value = (point.value as NumericHealthValue).numericValue.toDouble();
-          if (value > 0) {
-            final metric = HealthMetric(
-              type: point.type,
-              value: value,
-              unit: point.unit.toString(),
-              timestamp: point.dateFrom,
-            );
-            healthMetrics.add(metric);
-            print('Processing health point: ${point.type.name}, value: $value, time: ${point.dateFrom}');
-          }
+        if (!groupedData.containsKey(point.type)) {
+          groupedData[point.type] = [];
+        }
+        groupedData[point.type]!.add(point);
+      }
+
+      for (var type in groupedData.keys) {
+        switch (type) {
+          case HealthDataType.STEPS:
+          case HealthDataType.ACTIVE_ENERGY_BURNED:
+          case HealthDataType.EXERCISE_TIME:
+            double total = 0;
+            for (var point in groupedData[type]!) {
+              if (point.value is NumericHealthValue) {
+                total += convertToStandardUnit(point);
+              }
+            }
+            healthMetrics.add(HealthMetric(
+              type: type,
+              value: total,
+              unit: groupedData[type]!.first.unit.toString(),
+              timestamp: now,
+            ));
+            break;
+
+          case HealthDataType.HEART_RATE:
+          case HealthDataType.BLOOD_OXYGEN:
+          case HealthDataType.RESPIRATORY_RATE:
+          case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
+          case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
+          case HealthDataType.BLOOD_GLUCOSE:
+          case HealthDataType.DIETARY_CHOLESTEROL:
+            if (groupedData[type]!.isNotEmpty) {
+              var latestPoint = groupedData[type]!
+                  .reduce((a, b) => a.dateFrom.isAfter(b.dateFrom) ? a : b);
+
+              if (latestPoint.value is NumericHealthValue) {
+                healthMetrics.add(HealthMetric(
+                  type: type,
+                  value: convertToStandardUnit(latestPoint),
+                  unit: latestPoint.unit.toString(),
+                  timestamp: latestPoint.dateFrom,
+                ));
+              }
+            }
+            break;
+
+          default:
+            if (groupedData[type]!.isNotEmpty &&
+                groupedData[type]!.first.value is NumericHealthValue) {
+              var point = groupedData[type]!.first;
+              healthMetrics.add(HealthMetric(
+                type: type,
+                value: convertToStandardUnit(point),
+                unit: point.unit.toString(),
+                timestamp: point.dateFrom,
+              ));
+            }
+            break;
         }
       }
 
@@ -150,83 +257,47 @@ class HealthService extends ChangeNotifier {
           print(
               'Saved: ${metric.type.name} - Value: ${metric.value} ${metric.unit} at ${metric.timestamp}');
         }
-        notifyListeners();
-      } else {
-        print('No health metrics found to save');
       }
       return healthMetrics;
     } catch (e) {
-      print("Fetch error: $e");
+      print("Health data fetch error: $e");
       return [];
     }
   }
 
-  Future<Map<HealthDataType, bool>> verifyPermissions() async {
-    Map<HealthDataType, bool> permissionStatus = {};
-    
-    for (var type in types) {
-      bool? hasPermission = await health.hasPermissions([type]);
-      permissionStatus[type] = hasPermission ?? false;
-      print('Permission for ${type.name}: ${hasPermission ?? false}');
+  double convertToStandardUnit(HealthDataPoint point) {
+    if (point.value is NumericHealthValue) {
+      double value =
+          (point.value as NumericHealthValue).numericValue.toDouble();
+
+      switch (point.type) {
+        case HealthDataType.HEART_RATE:
+          return value;
+        case HealthDataType.STEPS:
+          return value;
+        case HealthDataType.ACTIVE_ENERGY_BURNED:
+          return point.unit.toString().contains("J") ? value / 4184 : value;
+        case HealthDataType.EXERCISE_TIME:
+          // Convert to minutes if needed
+          return point.unit.toString().contains("s") ? value / 60 : value;
+        case HealthDataType.BLOOD_OXYGEN:
+          return value > 1 ? value : value * 100;
+        case HealthDataType.BLOOD_GLUCOSE:
+          return point.unit.toString().contains("mmol/L")
+              ? value
+              : value / 18.0;
+        case HealthDataType.DIETARY_CHOLESTEROL:
+          return point.unit.toString().toLowerCase().contains("gram") ||
+                  point.unit.toString().contains("g") ||
+                  point.unit.toString().contains("GRAM")
+              ? value * 1000
+              : value;
+
+        default:
+          return value;
+      }
     }
-    
-    return permissionStatus;
-  }
-
-  Future<List<HealthMetric>> fetchHealthDataWithExtendedRange(
-      String userId, UserProfile? userProfile) async {
-    try {
-      if (!_isInitialized) {
-        await initialize();
-      }
-
-      bool authorized = await health.requestAuthorization(types);
-      if (!authorized) {
-        print("HealthKit authorization failed");
-        return [];
-      }
-
-      final now = DateTime.now();
-      final startTime = now.subtract(const Duration(days: 30));
-      List<HealthMetric> healthMetrics = [];
-
-      print('Attempting to fetch health data with extended range from ${startTime} to ${now}');
-      
-      List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(
-        types: types,
-        startTime: startTime,
-        endTime: now,
-      );
-      
-      print('Health points fetched with extended range: ${healthPoints.length}');
-
-      for (var point in healthPoints) {
-        if (point.value is NumericHealthValue) {
-          final value = (point.value as NumericHealthValue).numericValue.toDouble();
-          if (value > 0) {
-            final metric = HealthMetric(
-              type: point.type,
-              value: value,
-              unit: point.unit.toString(),
-              timestamp: point.dateFrom,
-            );
-            healthMetrics.add(metric);
-          }
-        }
-      }
-
-      if (healthMetrics.isNotEmpty) {
-        await _databaseService.insertHealthMetrics(
-            healthMetrics, userId, userProfile);
-        print(
-            'Saved ${healthMetrics.length} health metrics from extended range to MongoDB for user $userId');
-        notifyListeners();
-      }
-      return healthMetrics;
-    } catch (e) {
-      print("Fetch error with extended range: $e");
-      return [];
-    }
+    return 0;
   }
 
   Future<HealthMetric?> getLatestHealthData(HealthDataType type) async {
@@ -274,22 +345,19 @@ class HealthService extends ChangeNotifier {
 
       for (var point in stepsData) {
         if (point.value is NumericHealthValue) {
-          totalSteps +=
-              (point.value as NumericHealthValue).numericValue.toDouble();
+          totalSteps += convertToStandardUnit(point);
         }
       }
 
       for (var point in exerciseData) {
         if (point.value is NumericHealthValue) {
-          totalExerciseMinutes +=
-              (point.value as NumericHealthValue).numericValue.toDouble();
+          totalExerciseMinutes += convertToStandardUnit(point);
         }
       }
 
       for (var point in energyData) {
         if (point.value is NumericHealthValue) {
-          totalCaloriesBurned +=
-              (point.value as NumericHealthValue).numericValue.toDouble();
+          totalCaloriesBurned += convertToStandardUnit(point);
         }
       }
 
@@ -302,10 +370,8 @@ class HealthService extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
+  Future<void> dispose() async {
     stopPeriodicSync();
-    _databaseService.close();
-    super.dispose();
+    await _databaseService.close();
   }
 }

@@ -6,10 +6,13 @@ import '../models/health_metric.dart';
 import 'package:health/health.dart';
 import '../services/database_service.dart';
 
+typedef OnSignificantUpdateCallback = void Function();
+
 class HealthMetricsViewModel extends ChangeNotifier {
-  final HealthService _healthService = HealthService();
+  final HealthService _healthService;
   final DatabaseService _databaseService = DatabaseService();
   final UserProfileProvider _userProfileProvider;
+  OnSignificantUpdateCallback? onSignificantUpdate;
 
   List<HealthMetric> _metrics = [];
   bool _isLoading = false;
@@ -35,8 +38,14 @@ class HealthMetricsViewModel extends ChangeNotifier {
     return _getMetricValue(HealthDataType.STEPS);
   }
 
-  HealthMetricsViewModel(this._userProfileProvider) {
+  HealthMetricsViewModel(this._userProfileProvider)
+      : _healthService = HealthService() {
     _initializeDefaultMetrics();
+    _healthService.addListener(_onHealthServiceUpdate);
+  }
+
+  void _onHealthServiceUpdate() {
+    refreshData();
   }
 
   Future<void> initialize() async {
@@ -52,11 +61,11 @@ class HealthMetricsViewModel extends ChangeNotifier {
       if (_userId.isNotEmpty) {
         await initializeHealth();
 
+        _healthService.startPeriodSync(
+            _userId, _userProfileProvider.userProfile);
 
-        _healthService
-            .startPeriodSync(_userId, _userProfileProvider.userProfile,
-                callback: (fetchedMetrics) {
-          _updateMetricsFromFetch(fetchedMetrics);
+        Future.delayed(Duration(seconds: 5), () {
+          _setupPeriodicDataCheck();
         });
       }
 
@@ -69,25 +78,101 @@ class HealthMetricsViewModel extends ChangeNotifier {
     }
   }
 
-  void _updateMetricsFromFetch(List<HealthMetric> fetchedMetrics) {
-    if (fetchedMetrics.isEmpty) return;
+  void _setupPeriodicDataCheck() {
+    Future.delayed(Duration(minutes: 1), () async {
+      await _checkForNewData();
+      _setupPeriodicDataCheck();
+    });
+  }
 
-    print(
-        'Automatically updating UI with ${fetchedMetrics.length} new metrics');
+  Future<void> _checkForNewData() async {
+    try {
+      bool hasUpdates = false;
+      for (var type in _healthService.types) {
+        final latestMetric = await _databaseService.getLatestMetric(type);
+        if (latestMetric != null) {
+          final index = _metrics.indexWhere((m) => m.type == latestMetric.type);
+          if (index != -1) {
+            if (_metrics[index].value != latestMetric.value ||
+                _metrics[index].timestamp != latestMetric.timestamp) {
+              _metrics[index] = latestMetric;
+              print(
+                  'Updated metric: ${latestMetric.type.name} to ${latestMetric.value}');
+              hasUpdates = true;
+            }
+          }
+        }
+      }
+      if (hasUpdates) {
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error checking for new data: $e');
+    }
+  }
 
-    Map<HealthDataType, HealthMetric> updatedMetrics = {};
-
-    for (var metric in _metrics) {
-      updatedMetrics[metric.type] = metric;
+  void _aggregateHealthData(List<HealthDataPoint> healthPoints) {
+    Map<HealthDataType, List<HealthDataPoint>> groupedData = {};
+    for (var point in healthPoints) {
+      if (!groupedData.containsKey(point.type)) {
+        groupedData[point.type] = [];
+      }
+      groupedData[point.type]!.add(point);
     }
 
-    for (var fetchedMetric in fetchedMetrics) {
-      updatedMetrics[fetchedMetric.type] = fetchedMetric;
-    }
+    for (var type in groupedData.keys) {
+      switch (type) {
+        case HealthDataType.STEPS:
+        case HealthDataType.ACTIVE_ENERGY_BURNED:
+        case HealthDataType.EXERCISE_TIME:
+          double total = 0;
+          for (var point in groupedData[type]!) {
+            total += _healthService.convertToStandardUnit(point);
+          }
+          _updateMetric(type, total, groupedData[type]!.first.unit.toString());
+          break;
 
-    _metrics = updatedMetrics.values.toList();
+        case HealthDataType.HEART_RATE:
+        case HealthDataType.BLOOD_OXYGEN:
+        case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
+        case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
+        case HealthDataType.BLOOD_GLUCOSE:
+        case HealthDataType.RESPIRATORY_RATE:
+          var latestPoint = groupedData[type]!
+              .reduce((a, b) => a.dateFrom.isAfter(b.dateFrom) ? a : b);
+          _updateMetric(type, _healthService.convertToStandardUnit(latestPoint),
+              latestPoint.unit.toString());
+          break;
+        default:
+          // Handle other types if needed
+          break;
+      }
+    }
+  }
+
+  void _updateMetricsFromFetch(List<HealthMetric> fetchedData) {
+    if (fetchedData.isEmpty) return;
+
+    print('Processing ${fetchedData.length} new health metrics');
+
+    for (var metric in fetchedData) {
+      _updateMetric(metric.type, metric.value ?? 0.0, metric.unit);
+    }
 
     notifyListeners();
+  }
+
+  void _updateMetric(HealthDataType type, double? value, String unit) {
+    final index = _metrics.indexWhere((m) => m.type == type);
+    if (index != -1) {
+      _metrics[index] = HealthMetric(
+        type: type,
+        value: value,
+        unit: unit,
+        timestamp: DateTime.now(),
+      );
+      print('Updated metric: ${type.name} to $value $unit');
+    }
   }
 
   Future<void> _initializeUserId() async {
@@ -190,22 +275,15 @@ class HealthMetricsViewModel extends ChangeNotifier {
         }
       }
 
-      final authorized = await _healthService.requestAuthorization();
+      await _healthService.initialize();
+      final authorized = await _healthService.requestHealthPermissions();
+
       if (authorized) {
         final fetchedData = await _healthService.fetchHealthData(
             _userId, _userProfileProvider.userProfile);
 
         if (fetchedData.isNotEmpty) {
-          await _databaseService.insertHealthMetrics(
-              fetchedData, _userId, _userProfileProvider.userProfile);
-
-          for (var fetchedMetric in fetchedData) {
-            final index =
-                _metrics.indexWhere((m) => m.type == fetchedMetric.type);
-            if (index != -1) {
-              _metrics[index] = fetchedMetric;
-            }
-          }
+          _updateMetricsFromFetch(fetchedData);
         }
       }
     } catch (e) {
@@ -234,30 +312,15 @@ class HealthMetricsViewModel extends ChangeNotifier {
         }
       }
 
-      final authorized = await _healthService.requestAuthorization();
+      final authorized = await _healthService.requestHealthPermissions();
       if (authorized) {
         final fetchedData = await _healthService.fetchHealthData(
             _userId, _userProfileProvider.userProfile);
 
         if (fetchedData.isNotEmpty) {
           print(
-              'Fetched ${fetchedData.length} new health metrics from HealthKit');
-          await _databaseService.insertHealthMetrics(
-              fetchedData, _userId, _userProfileProvider.userProfile);
-
-          Map<HealthDataType, HealthMetric> updatedMetrics = {};
-
-          for (var metric in _metrics) {
-            updatedMetrics[metric.type] = metric;
-          }
-
-          for (var fetchedMetric in fetchedData) {
-            updatedMetrics[fetchedMetric.type] = fetchedMetric;
-          }
-
-          _metrics = updatedMetrics.values.toList();
-
-          notifyListeners();
+              'Fetched ${fetchedData.length} new health data points from HealthKit');
+          _updateMetricsFromFetch(fetchedData);
         } else {
           print('No new health data found in HealthKit');
         }
@@ -270,6 +333,10 @@ class HealthMetricsViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> checkHealthKitAccessibility() async {
+    return await _healthService.isHealthKitAccessible();
+  }
+
   double _getMetricValue(HealthDataType type) {
     final metric = _metrics.firstWhere(
       (m) => m.type == type,
@@ -280,6 +347,8 @@ class HealthMetricsViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _healthService.removeListener(_onHealthServiceUpdate);
+    _healthService.dispose();
     _databaseService.close();
     super.dispose();
   }

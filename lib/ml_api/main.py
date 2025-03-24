@@ -286,8 +286,8 @@ async def chat_with_ai(request: Request):
         if not user_id or not message:
             raise HTTPException(status_code=422, detail="Missing user_id or message")
         
-        user_data = await gpt_data_collection.find_one({"user_id": user_id})
-        prediction_data = await prediction_collection.find_one({"user_id": user_id})
+        user_data = await gpt_data_collection.find_one({"user_id": user_id}, sort=[("timestamp", -1)])
+        prediction_data = await prediction_collection.find_one({"user_id": user_id}, sort=[("timestamp", -1)])
         
         if not user_data or not prediction_data:
             prompt = f"You are a health assistant AI. The user asks: {message}"
@@ -313,16 +313,17 @@ async def chat_with_ai(request: Request):
             
             The user asks: {message}
             
-            Provide a helpful, accurate response based on medical knowledge. Keep your answer concise and don't always give the same response.
+            Provide a personalized, culturally-sensitive response based on medical knowledge and the user's background. Consider their ethnicity, cultural identity, and dietary habits when relevant. Vary your tone, structure, and approach with each response to avoid repetitive answers. Be conversational yet informative, and tailor your advice to their specific health profile.
             """
         
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful health assistant."},
+                {"role": "system", "content": "You are a culturally-aware health assistant who provides personalized guidance based on individual health profiles and backgrounds."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=150
+            temperature = 0.7,
+            max_tokens=200
         )
         
         ai_response = response.choices[0].message.content.strip()

@@ -21,11 +21,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final apiService = ApiService();
   String _suggestion = '';
   Timer? _timer;
+  Timer? _refreshTimer;
   bool _isLoading = false;
   double _riskProbability = 0.0;
   int _prediction = 0;
   DateTime _lastUpdated = DateTime.now();
   String _fullName = 'User';
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
 
   void fetchPredictionAndSuggestion() async {
     if (mounted) {
@@ -134,15 +137,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
     fetchPredictionAndSuggestion();
 
-    _timer = Timer.periodic(Duration(seconds: 30), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 40), (timer) {
       fetchPredictionAndSuggestion();
     });
+  }
+
+  void _startPeriodicRefresh() {
+    _refreshTimer?.cancel();
+
+    // Initial refresh
+    _refreshHealthData();
+
+    // Set up periodic refresh
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      _refreshHealthData();
+    });
+  }
+
+  void _refreshHealthData() {
+    if (mounted) {
+      print('Performing periodic health data refresh');
+      // Trigger refresh indicator programmatically
+      _refreshIndicatorKey.currentState?.show();
+      // Or directly call refreshData
+      Provider.of<HealthMetricsViewModel>(context, listen: false)
+          .refreshData()
+          .then((_) {
+        print('Health data refresh completed');
+      });
+    }
   }
 
   @override
   void initState() {
     super.initState();
     _startPeriodicFetching();
+    _startPeriodicRefresh();
     _loadUserName();
   }
 
@@ -152,14 +182,19 @@ class _HomeScreenState extends State<HomeScreen> {
       create: (context) {
         final viewModel = HealthMetricsViewModel(
             Provider.of<UserProfileProvider>(context, listen: false));
-        Future.delayed(Duration.zero, () => viewModel.initialize());
+        Future.delayed(Duration.zero, () {
+          viewModel.initialize();
+        });
         return viewModel;
       },
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Consumer<HealthMetricsViewModel>(
           builder: (context, viewModel, child) {
+            print(
+                'Rebuilding HomeScreen with metrics hash: ${viewModel.metrics.hashCode}');
             return Stack(
+              key: ValueKey(viewModel.metrics.hashCode),
               children: [
                 Positioned(
                   left: -size.width * 0.5,
@@ -182,8 +217,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 RefreshIndicator(
+                  key: _refreshIndicatorKey,
                   onRefresh: () async {
+                    print('Manual refresh triggered');
                     await viewModel.refreshData();
+                    print('Manual refresh completed');
                   },
                   child: SingleChildScrollView(
                     child: Column(
@@ -417,6 +455,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 20.0),
+                                child: Text(
+                                  'Last updated: ${_formatLastUpdated()}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -450,6 +498,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _formatLastUpdated() {
+    return "${_lastUpdated.hour}:${_lastUpdated.minute.toString().padLeft(2, '0')}";
+  }
+
   Future<void> _loadUserName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -468,6 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 

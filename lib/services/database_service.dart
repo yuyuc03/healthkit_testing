@@ -90,24 +90,26 @@ class DatabaseService {
             break;
           case HealthDataType.DIETARY_CHOLESTEROL:
             double cholValue = metric.value ?? 0;
-            int cholCategory = 1;
-            if (cholValue > 200 && cholValue <= 240) {
-              cholCategory = 2;
-            } else if (cholValue > 240) {
-              cholCategory = 3;
+            int cholCategory = 1; // Low: < 200 mg
+            if (cholValue >= 200 && cholValue < 300) {
+              cholCategory = 2; // Borderline high: 200-300 mg
+            } else if (cholValue >= 300) {
+              cholCategory = 3; // High: >= 300 mg
             }
-            mlMetrics['cholesterol'] = cholCategory;
+            mlMetrics['chol'] = cholCategory;
             break;
+
           case HealthDataType.BLOOD_GLUCOSE:
             double glucValue = metric.value ?? 0;
-            int glucCategory = 1;
-            if (glucValue >= 100 && glucValue < 126) {
-              glucCategory = 2;
-            } else if (glucValue >= 126) {
-              glucCategory = 3;
+            int glucCategory = 1; // Normal: < 5.6 mmol/L
+            if (glucValue >= 5.6 && glucValue < 7.0) {
+              glucCategory = 2; // Prediabetic: 5.6-7.0 mmol/L
+            } else if (glucValue >= 7.0) {
+              glucCategory = 3; // Diabetic: >= 7.0 mmol/L
             }
             mlMetrics['gluc'] = glucCategory;
             break;
+
           default:
             break;
         }
@@ -120,8 +122,7 @@ class DatabaseService {
         metricsMap[metric.type.name] = {
           'value': metric.value,
           'unit': metric.unit,
-          'recorded_at': metric.timestamp
-              .toIso8601String() 
+          'recorded_at': metric.timestamp.toIso8601String()
         };
       }
 
@@ -158,8 +159,7 @@ class DatabaseService {
         }
 
         final orderedMLData = {
-          'timestamp': latestTimestamp
-              .toIso8601String(), 
+          'timestamp': latestTimestamp.toIso8601String(),
           'user_id': userId,
           'age': latestUserProfile.age?.toDouble() ?? 0.0,
           'gender': latestUserProfile.gender ?? 0,
