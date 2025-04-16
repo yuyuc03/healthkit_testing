@@ -471,13 +471,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 0.9,
+                            mainAxisSpacing: 6,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 1,
                           ),
                           itemCount: viewModel.metrics.length,
                           itemBuilder: (context, index) {

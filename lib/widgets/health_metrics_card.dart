@@ -9,71 +9,98 @@ class HealthMetricsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Color(0xFFF6F6FE), 
-        borderRadius: BorderRadius.circular(16), 
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2), 
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: Offset(0, 3), 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate appropriate font sizes based on available width
+        final titleSize = constraints.maxWidth * 0.075;
+        final valueSize = constraints.maxWidth * 0.12;
+        final unitSize = constraints.maxWidth * 0.06;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Color(0xFFF6F6FE),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          margin: EdgeInsets.all(constraints.maxWidth * 0.02),
+          padding: EdgeInsets.all(constraints.maxWidth * 0.04),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Flexible(
+                child: Icon(
+                  _getIconForMetric(metric.type),
+                  size: constraints.maxWidth * 0.14,
+                  color: _getColorForMetric(metric.type),
+                ),
+              ),
+              SizedBox(height: constraints.maxHeight * 0.03),
               Flexible(
                 child: Text(
                   metric.displayName,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: titleSize,
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple, 
+                    color: Colors.black87,
                   ),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(
-                _getIconForMetric(metric.type),
-                color: Colors.deepPurple[900],
-                size: 20, 
+              SizedBox(height: constraints.maxHeight * 0.03),
+              Flexible(
+                flex: 2,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        _formatValue(metric.value),
+                        style: TextStyle(
+                          fontSize: valueSize,
+                          fontWeight: FontWeight.bold,
+                          color: _getColorForMetric(metric.type),
+                        ),
+                      ),
+                      SizedBox(width: 2),
+                      Text(
+                        metric.unitDisplay,
+                        style: TextStyle(
+                          fontSize: unitSize,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                metric.value?.toStringAsFixed(1) ?? '- -',
-                style: TextStyle(
-                  fontSize: 28,
-                  color: metric.value != null
-                      ? Colors.black
-                      : Colors.grey, 
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                metric.unitDisplay,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.blueGrey, 
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  String _formatValue(double? value) {
+    if (value == null) return "0";
+    // Handle specific formatting based on metric type
+    if (metric.type == HealthDataType.BLOOD_GLUCOSE ||
+        metric.type == HealthDataType.BLOOD_OXYGEN) {
+      return value.toStringAsFixed(1);
+    }
+    return value.toInt().toString();
   }
 
   IconData _getIconForMetric(HealthDataType type) {
@@ -99,6 +126,30 @@ class HealthMetricsCard extends StatelessWidget {
         return Icons.directions_walk;
       default:
         return Icons.health_and_safety;
+    }
+  }
+  Color _getColorForMetric(HealthDataType type) {
+    switch (type) {
+      case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
+      case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
+      case HealthDataType.HEART_RATE:
+        return Colors.red;
+      case HealthDataType.BLOOD_GLUCOSE:
+        return Colors.orange;
+      case HealthDataType.DIETARY_CHOLESTEROL:
+        return Colors.amber;
+      case HealthDataType.BLOOD_OXYGEN:
+        return Colors.blue;
+      case HealthDataType.RESPIRATORY_RATE:
+        return Colors.indigo;
+      case HealthDataType.ACTIVE_ENERGY_BURNED:
+        return Colors.deepOrange;
+      case HealthDataType.EXERCISE_TIME:
+        return Colors.green;
+      case HealthDataType.STEPS:
+        return Colors.teal;
+      default:
+        return Colors.deepPurple;
     }
   }
 }
