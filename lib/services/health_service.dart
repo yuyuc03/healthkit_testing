@@ -174,7 +174,7 @@ class HealthService extends ChangeNotifier {
       }
 
       final now = DateTime.now();
-      final startTime = now.subtract(const Duration(hours: 24));
+      final startTime = DateTime(now.year, now.month, now.day);
       List<HealthMetric> healthMetrics = [];
 
       List<HealthDataPoint> healthPoints = await health.getHealthDataFromTypes(

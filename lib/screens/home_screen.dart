@@ -3,6 +3,7 @@ import 'package:healthkit_integration_testing/services/api_service.dart';
 import 'package:healthkit_integration_testing/services/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../viewmodels/health_metrics_viewmodel.dart';
 import '../../widgets/health_metrics_card.dart';
 import '../../widgets/activity_ring.dart';
@@ -566,10 +567,12 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          titlePadding: EdgeInsets.all(20),
+          contentPadding: EdgeInsets.only(left: 20, right: 20, bottom: 0),
           title: Row(
             children: [
               Icon(Icons.health_and_safety, color: Colors.deepPurple),
-              SizedBox(width: 8),
+              SizedBox(width: 12),
               Text('Health Suggestions'),
             ],
           ),
@@ -581,9 +584,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _suggestion.isNotEmpty
-                      ? Text(_suggestion)
+                      ? _buildStructuredSuggestions(_suggestion)
                       : Text('Fetching suggestions...'),
-                  SizedBox(height: 16),
+                  SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -622,5 +625,84 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  Widget _buildStructuredSuggestions(String suggestionData) {
+    try {
+      // Parse JSON
+      final parsed = json.decode(suggestionData);
+
+      // Check if the structure matches what we expect
+      if (parsed.containsKey('suggestions')) {
+        final suggestions =
+            List<Map<String, dynamic>>.from(parsed['suggestions']);
+
+        // Build UI from structured data
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: suggestions.map((suggestion) {
+            final number = suggestion['number'];
+            final text = suggestion['text'];
+
+            return Container(
+              margin: EdgeInsets.only(bottom: 16),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.15),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        number.toString(),
+                        style: TextStyle(
+                          color: Colors.deepPurple,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.4,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      }
+    } catch (e) {
+      print("Error parsing suggestion data: $e");
+      // Debug the actual content
+      print("Raw suggestion data: $_suggestion");
+    }
+
+    // Fallback to displaying the text directly if parsing fails
+    return Text(_suggestion);
   }
 }

@@ -23,13 +23,35 @@ class ApiService {
       throw Exception('Failed to get prediction: $e');
     }
   }
+  String formatOpenAIResponse(String rawResponse) {
+    final formattedText = rawResponse
+      .replaceAllMapped(RegExp(r'(\d+\.)'), (match) => '\n${match.group(0)}')
+      .trim();
+  return formattedText;
+  }
 
   Future<http.Response> fetchSuggestion(String userId) async {
+    final requestData = {
+      "user_id": userId,
+      "format": "json",  
+      "prompt": """
+        Please provide 5 health suggestions for this user as a JSON array with numbered items.
+        Example format:
+        {
+          "suggestions": [
+            {"number": 1, "text": "Suggestion text here"},
+            {"number": 2, "text": "Another suggestion here"}
+          ]
+        }
+        """
+    };
+    
     final response = await http.post(
       Uri.parse("$baseUrl/generate_suggestion/"),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({"user_id": userId}),
+      body: jsonEncode(requestData),
     );
+    
     return response;
   }
 }

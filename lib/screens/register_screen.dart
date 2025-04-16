@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../config/app_config.dart';
-
+import 'privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -17,8 +18,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _gdprConsent = false;
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
 
   void _registerUser() async {
+    if (!_gdprConsent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must accept the privacy policy to register'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       try {
         String userId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -120,7 +134,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-
                 Form(
                   key: _formKey,
                   child: Column(
@@ -174,11 +187,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: !_showPassword,
                         decoration: InputDecoration(
                           hintText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: const Icon(Icons.visibility_off_outlined),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showPassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.grey[600],
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showPassword = !_showPassword;
+                              });
+                            },
+                          ),
                           filled: true,
                           fillColor: Colors.grey.shade100,
                           border: OutlineInputBorder(
@@ -199,11 +224,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _confirmPasswordController,
-                        obscureText: true,
+                        obscureText: !_showConfirmPassword,
                         decoration: InputDecoration(
                           hintText: 'Confirm Password',
                           prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: const Icon(Icons.visibility_off_outlined),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showConfirmPassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.grey[600],
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showConfirmPassword = !_showConfirmPassword;
+                              });
+                            },
+                          ),
                           filled: true,
                           fillColor: Colors.grey.shade100,
                           border: OutlineInputBorder(
@@ -221,13 +258,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 16),
+                      CheckboxListTile(
+                        title: RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey[700]),
+                            children: [
+                              TextSpan(
+                                  text:
+                                      'I agree to the processing of my personal data according to the '),
+                              TextSpan(
+                                text: 'Privacy Policy',
+                                style: TextStyle(
+                                  color: Colors.deepPurple,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              PrivacyPolicyScreen()),
+                                    );
+                                  },
+                              ),
+                            ],
+                          ),
+                        ),
+                        value: _gdprConsent,
+                        onChanged: (value) {
+                          setState(() {
+                            _gdprConsent = value ?? false;
+                          });
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        activeColor: Colors.deepPurple,
+                      ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: _registerUser, 
+                  onPressed: _registerUser,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     padding: const EdgeInsets.symmetric(vertical: 16),
