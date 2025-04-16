@@ -25,11 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String _errorMessage = '';
+  final _passwordFocusNode = FocusNode();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -60,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
           print('Stored user full name in preferences: $fullName');
 
           final UserProfile = await getUserProfile(userId);
-          widget.healthService.startPeriodSync(userId, UserProfile, interval: Duration(seconds: 30));
+          widget.healthService.startPeriodSync(userId, UserProfile,
+              interval: Duration(seconds: 30));
 
           Navigator.pushReplacement(
             context,
@@ -233,6 +236,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: BorderSide.none,
                       ),
                     ),
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_passwordFocusNode);
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return "Please enter your email address here";
@@ -249,6 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
+                    focusNode: _passwordFocusNode,
                     decoration: InputDecoration(
                       hintText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
@@ -259,6 +266,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: BorderSide.none,
                       ),
                     ),
+                    onFieldSubmitted: (_) {
+                      if (!_isLoading) {
+                        _loginUser();
+                      }
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
