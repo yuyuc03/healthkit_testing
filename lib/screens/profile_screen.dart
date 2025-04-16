@@ -91,7 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Container(
               padding:
-                  EdgeInsets.only(top: 40, left: 16, right: 16, bottom: 24),
+                  EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -127,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 30),
                   Text(
                     'Hello, $_fullName!',
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -143,6 +143,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    padding:
+                  EdgeInsets.only(top: 2, left: 16, right: 16, bottom: 24),
+                  ),
                   _buildSectionHeader('Account'),
                   ListTile(
                     leading: Icon(Icons.person),
@@ -233,16 +237,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
                           },
                         ),
-                  Divider(),
-                  _buildSectionHeader('Notifications'),
-                  SwitchListTile(
-                      secondary: Icon(Icons.notifications),
-                      title: Text('Enable Notifications'),
-                      subtitle: Text('Receive health alerts and reminders'),
-                      value: false,
-                      onChanged: (value) {
-                        // Logic haven't add hereeeee!!!!!
-                      }),
                   Divider(),
                   _buildSectionHeader('Legal'),
                   ListTile(

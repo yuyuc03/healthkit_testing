@@ -59,6 +59,7 @@ class MyApp extends StatelessWidget {
         Provider.value(value: notificationService),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false, 
         title: 'Health App',
         theme: ThemeData(
           primarySwatch: Colors.deepPurple,
